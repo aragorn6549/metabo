@@ -53,35 +53,38 @@ export function clearSupabaseUrl(): void {
   localStorage.removeItem(STORAGE_KEY_KEY);
 }
 
-let _client: ReturnType<typeof createClient<Database>> | null = null;
+type Client = ReturnType<typeof createClient<Database>>;
+let _client: Client | null = null;
+let _clientSig = '';
 
-function makeClient() {
-  const url = resolveUrl();
-  const anonKey = resolveAnonKey();
-  if (!url || !anonKey) {
-    throw new Error(
-      'Supabase не настроен: задайте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в окружении или введите их на экране настройки.',
-    );
-  }
+function makeClient(url: string, anonKey: string): Client {
   return createClient<Database>(url, anonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
 }
 
-// Ленивый клиент: чтобы экран настройки мог отрендериться даже без конфигурации.
-const hasEnvKeys = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Placeholder-клиент: рендерится, пока настройки нет. НИКОГДА не должен ходить в сеть —
+// все реальные запросы блокирует SupabaseSetupGate. Если по какой-то причине запрос
+// всё же уйдёт сюда — получим понятную ошибку вместо «No API key found».
+const PLACEHOLDER_URL = 'https://placeholder.invalid';
+const PLACEHOLDER_KEY = 'missing-config';
 
-export function sb(): ReturnType<typeof createClient<Database>> {
-  if (!_client) {
-    const url = resolveUrl();
-    const key = resolveAnonKey();
-    if ((!url || !key) && (hasEnvKeys || url)) {
-      // placeholder: реальные запросы всё равно блокирует gate-экран настройки
-      _client = createClient<Database>('https://placeholder.supabase.co', 'public-anon-placeholder-key');
-    } else {
-      _client = makeClient();
+/** Актуальный клиент по текущим настройкам; при изменении URL/ключа пересоздаёт клиента. */
+export function sb(): Client {
+  const url = resolveUrl();
+  const key = resolveAnonKey();
+  const sig = url + '|' + key;
+  if (_client && _clientSig === sig) return _client;
+  if (!url || !key) {
+    // не настроено — возвращаем placeholder (сеть для него закрыта ниже)
+    if (!_client || _clientSig !== 'placeholder') {
+      _client = makeClient(PLACEHOLDER_URL, PLACEHOLDER_KEY);
+      _clientSig = 'placeholder';
     }
+    return _client;
   }
+  _client = makeClient(url, key);
+  _clientSig = sig;
   return _client;
 }
 

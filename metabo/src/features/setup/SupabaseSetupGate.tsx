@@ -61,8 +61,12 @@ export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
       </button>
       <p style={{ marginTop: 16, fontSize: 12, opacity: 0.6 }}>
         Где взять: supabase.com → ваш проект → шестерёнка Project Settings → вкладка API →
-        поля Project URL и anon/public key. Эти данные публичные (их всё равно видно в коде сайта),
+        поля Project URL и anon/public key (кнопка Reveal). Эти данные публичные (их всё равно видно в коде сайта),
         доступ к данным защищает RLS на стороне базы.
+      </p>
+      <p style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
+        Не видите этот экран, но кнопки не работают? Значит браузер открыл старую версию сайта — обновите
+        страницу с очисткой кэша: <b>Ctrl+Shift+R</b> (Windows) / <b>Cmd+Shift+R</b> (Mac).
       </p>
     </div>
   );

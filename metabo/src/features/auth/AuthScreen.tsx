@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, db } from '@/lib/supabase';
+import { supabase, db, isSupabaseConfigured } from '@/lib/supabase';
 import type { Profile } from '@/types/db';
 import { useAuthStore } from '@/store/authStore';
 
@@ -17,6 +17,11 @@ export function AuthScreen() {
 
   const doAuth = async () => {
     setError(''); setNotice('');
+    // Защита от «мёртвых кнопок»: если ключи не настроены/устарели — не слать запрос в сеть.
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
+      return;
+    }
     const e = email.trim();
     if (!e || !password) { setError('Заполните оба поля'); return; }
     if (!e.includes('@')) { setError('Введите корректный email'); return; }
@@ -38,6 +43,10 @@ export function AuthScreen() {
   };
 
   const handleDemo = async () => {
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Откройте экран настройки или перезагрузите страницу.');
+      return;
+    }
     setBusy(true);
     try {
       // DECISION (§10): демо = анонимный вход + is_demo=true в profiles.
