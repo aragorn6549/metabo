@@ -19,14 +19,19 @@ export default function SupabaseSetupGate({ onReady }: Props) {
   const [err, setErr] = useState('');
 
   const save = () => {
-    const u = url.trim();
-    const k = key.trim();
-    if (!/^https:\/\/.+\.supabase\.co$/.test(u)) {
-      setErr('URL должен выглядеть как https://xxxxxxxx.supabase.co');
+    let u = url.trim();
+    let k = key.trim();
+    // Авточинимые частые ошибки ручного ввода:
+    if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;   // вставили URL без протокола
+    u = u.replace(/\/+$/, '');
+    if (k.startsWith('"') || k.startsWith("'")) k = k.slice(1); // случайно скопировали кавычку
+    if (k.endsWith('"') || k.endsWith("'")) k = k.slice(0, -1);
+    if (!/^[a-z0-9.-]+\.supabase\.co/i.test(u.replace(/^https?:\/\//i, ''))) {
+      setErr('Введите адрес проекта вида https://xxxxxxxx.supabase.co — он виден в Supabase: Project Settings → API → Project URL');
       return;
     }
     if (k.length < 20) {
-      setErr('Похоже, ключ неполный. Скопируйте anon public key целиком.');
+      setErr('Введите anon public key целиком (Project Settings → API → Project API keys → anon public → Reveal и скопируйте всю длинную строку)');
       return;
     }
     saveSupabaseConfig(u, k);
@@ -35,36 +40,43 @@ export default function SupabaseSetupGate({ onReady }: Props) {
   };
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <h1 className="auth-title">⚙️ Настройка подключения</h1>
-        <p className="auth-sub">
-          Приложение впервые открыто на этом устройстве. Укажите данные вашего проекта
-          Supabase (их видно в панели Supabase → Connect → API).
-        </p>
-        <label className="field-label" htmlFor="sb-url">Project URL</label>
-        <input
-          id="sb-url"
-          className="input"
-          placeholder="https://yxpgjajehqmynixpaasb.supabase.co"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-        <label className="field-label" htmlFor="sb-key">Anon public key</label>
-        <input
-          id="sb-key"
-          className="input"
-          placeholder="eyJhbGciOi..."
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-        />
-        {err && <div className="toast toast-error">{err}</div>}
-        <button className="btn btn-primary" onClick={save}>Сохранить и продолжить</button>
-        <p className="auth-hint">
-          Эти значения сохранятся только в этом браузере. Это публичный ключ — он не даёт
-          доступ к чужим данным благодаря политике безопасности RLS.
-        </p>
-      </div>
+    <div style={{ maxWidth: 460, margin: '80px auto', padding: 24 }}>
+      <h2 style={{ marginBottom: 12 }}>Настройка подключения</h2>
+      <p style={{ opacity: 0.8, marginBottom: 16 }}>
+        Приложение впервые открыто на этом устройстве. Укажите адрес вашего Supabase-проекта
+        и его публичный ключ (anon key) — это нужно сделать только один раз.
+      </p>
+      <label style={{ fontSize: 12, opacity: 0.7 }}>Project URL</label>
+      <input
+        className="inp"
+        style={{ width: '100%', padding: '10px 12px', fontSize: 15, marginTop: 4 }}
+        placeholder="https://xxxxxxxx.supabase.co"
+        value={url}
+        onChange={(e) => { setUrl(e.target.value); setErr(''); }}
+        autoFocus
+      />
+      <label style={{ fontSize: 12, opacity: 0.7, display: 'block', marginTop: 14 }}>Anon public key</label>
+      <input
+        className="inp"
+        style={{ width: '100%', padding: '10px 12px', fontSize: 13, marginTop: 4 }}
+        placeholder="sb_publishable_... или eyJhbGciOi..."
+        value={key}
+        onChange={(e) => { setKey(e.target.value); setErr(''); }}
+        onKeyDown={(e) => e.key === 'Enter' && save()}
+      />
+      {err && <div style={{ color: '#ff6b6b', marginTop: 8, fontSize: 13 }}>{err}</div>}
+      <button className="btn btn-primary" style={{ marginTop: 16, width: '100%' }} onClick={save}>
+        Сохранить и продолжить
+      </button>
+      <p style={{ marginTop: 16, fontSize: 12, opacity: 0.6 }}>
+        Где взять: supabase.com → ваш проект → шестерёнка Project Settings → вкладка API →
+        поля Project URL и anon/public key (кнопка Reveal). Эти данные публичные (их всё равно видно в коде сайта),
+        доступ к данным защищает RLS на стороне базы.
+      </p>
+      <p style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
+        Не видите этот экран, но кнопки не работают? Значит браузер открыл старую версию сайта — обновите
+        страницу с очисткой кэша: <b>Ctrl+Shift+R</b> (Windows) / <b>Cmd+Shift+R</b> (Mac).
+      </p>
     </div>
   );
 }

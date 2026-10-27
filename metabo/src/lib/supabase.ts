@@ -29,14 +29,44 @@ export function saveSupabaseConfig(url: string, key: string): void {
   client = null; // пересоздадим клиент с новыми значениями
 }
 
-let client: SupabaseClient | null = null;
+export function clearSupabaseUrl(): void {
+  localStorage.removeItem(STORAGE_URL_KEY);
+  localStorage.removeItem(STORAGE_KEY_KEY);
+}
 
-/** Возвращает клиент Supabase или null, если URL/ключ ещё не настроены. */
-export function getSupabase(): SupabaseClient | null {
-  const { url, key } = getSupabaseConfig();
-  if (!url || !key) return null;
-  if (!client) client = createClient(url, key);
-  return client;
+type Client = ReturnType<typeof createClient<Database>>;
+let _client: Client | null = null;
+let _clientSig = '';
+
+function makeClient(url: string, anonKey: string): Client {
+  return createClient<Database>(url, anonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+}
+
+// Placeholder-клиент: рендерится, пока настройки нет. НИКОГДА не должен ходить в сеть —
+// все реальные запросы блокирует SupabaseSetupGate. Если по какой-то причине запрос
+// всё же уйдёт сюда — получим понятную ошибку вместо «No API key found».
+const PLACEHOLDER_URL = 'https://placeholder.invalid';
+const PLACEHOLDER_KEY = 'missing-config';
+
+/** Актуальный клиент по текущим настройкам; при изменении URL/ключа пересоздаёт клиента. */
+export function sb(): Client {
+  const url = resolveUrl();
+  const key = resolveAnonKey();
+  const sig = url + '|' + key;
+  if (_client && _clientSig === sig) return _client;
+  if (!url || !key) {
+    // не настроено — возвращаем placeholder (сеть для него закрыта ниже)
+    if (!_client || _clientSig !== 'placeholder') {
+      _client = makeClient(PLACEHOLDER_URL, PLACEHOLDER_KEY);
+      _clientSig = 'placeholder';
+    }
+    return _client;
+  }
+  _client = makeClient(url, key);
+  _clientSig = sig;
+  return _client;
 }
 
 /** Бросает ошибку, если Supabase не настроен (для вызовов из кода, который требует БД). */
