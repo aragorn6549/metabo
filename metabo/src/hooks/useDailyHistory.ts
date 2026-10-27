@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay, subDays } from 'date-fns';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import { toDailyHistory } from '@/lib/converters';
 import { useAuthStore } from '@/store/authStore';
 import type { DailyHistoryRow } from '@/types/db';
@@ -14,7 +14,7 @@ export function useDailyHistory(days = 90) {
     queryKey: [...historyKey, days],
     queryFn: async () => {
       const from = format(startOfDay(subDays(new Date(), days)), 'yyyy-MM-dd');
-      const { data, error } = await supabase.from('daily_history').select('*')
+      const { data, error } = await db().from('daily_history').select('*')
         .gte('day', from).order('day', { ascending: true });
       if (error) throw new Error(error.message);
       return (data as DailyHistoryRow[]).map(toDailyHistory);
@@ -35,7 +35,7 @@ export function useUpsertDailyHistory() {
         fat_oxidized: e.fatOxidized, fat_stored: e.fatStored, muscle_net: e.muscleNet,
       };
       // DECISION: onConflict='user_id,day' соответствует unique-индексу из миграции.
-      const { error } = await (supabase.from('daily_history') as any).upsert(body, { onConflict: 'user_id,day' });
+      const { error } = await db().from('daily_history').upsert(body, { onConflict: 'user_id,day' });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: historyKey }),
