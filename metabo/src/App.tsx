@@ -1,6 +1,6 @@
 // Роутинг и guard-логика (§4.2, §9 readme1.md):
 // /login — AuthScreen; /onboarding — онбординг; / — Home (требует baseline).
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useBaseline } from '@/hooks/useInBodyLogs';
@@ -8,6 +8,7 @@ import { AuthScreen } from '@/features/auth/AuthScreen';
 import { Onboarding } from '@/features/onboarding/Onboarding';
 import { Home } from '@/pages/Home';
 import { Skeleton } from '@/components/ui';
+import { SupabaseSetupGate } from '@/features/setup/SupabaseSetupGate';
 
 function FullLoader() {
   return (
@@ -47,14 +48,14 @@ function OnboardingRoute() {
 }
 
 export function App() {
-  const location = useLocation();
-  void location;
   return (
-    <Routes>
-      <Route path="/login" element={<AuthScreen />} />
-      <Route path="/onboarding" element={<OnboardingRoute />} />
-      <Route path="/" element={<RequireAuth><ProtectedHome /></RequireAuth>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <SupabaseSetupGate>
+      <Routes>
+        <Route path="/login" element={<AuthScreen />} />
+        <Route path="/onboarding" element={<OnboardingRoute />} />
+        <Route path="/" element={<RequireAuth><ProtectedHome /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </SupabaseSetupGate>
   );
 }

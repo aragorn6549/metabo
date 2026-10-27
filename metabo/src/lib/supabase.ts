@@ -2,18 +2,94 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/db';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// URL и anon-ключ можно ввести прямо в интерфейсе (настраивается один раз, хранится в localStorage).
+// В проде правильный путь — VITE_SUPABASE_* в окружении Vercel; ручной ввод — fallback для быстрых тестов.
+const STORAGE_URL_KEY = 'metabo.supabase.url';
+const STORAGE_KEY_KEY = 'metabo.supabase.anonkey';
 
-// DECISION: если env не задан — падаем с понятным сообщением, а не создаём битый клиент.
-if (!url || !anonKey) {
-  throw new Error(
-    'Не заданы VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Скопируйте .env.example в .env.local и заполните значения.',
-  );
+function normalizeHost(v: string): string {
+  let s = v.trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  return s.replace(/\/+$/, '');
 }
 
-export const supabase = createClient<Database>(url, anonKey, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+function resolveUrl(): string {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_URL_KEY) : null;
+  const env = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  return normalizeHost(saved || env || '');
+}
+
+export function getSupabaseUrl(): string {
+  return resolveUrl();
+}
+
+export function resolveAnonKey(): string {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_KEY) : null;
+  const env = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  return (saved || env || '').trim();
+}
+
+export function getSupabaseAnonKey(): string {
+  return resolveAnonKey();
+}
+
+export function isSupabaseConfigured(): boolean {
+  // configured == есть URL и anon-ключ (введённые вручную или из env)
+  return !!resolveUrl() && !!resolveAnonKey();
+}
+
+// Сохраняет URL проекта и пересоздаёт клиент (страница перезагружается вызывающим кодом).
+export function setSupabaseUrl(value: string): void {
+  localStorage.setItem(STORAGE_URL_KEY, normalizeHost(value));
+}
+
+export function setSupabaseAnonKey(value: string): void {
+  localStorage.setItem(STORAGE_KEY_KEY, value.trim());
+}
+
+export function clearSupabaseUrl(): void {
+  localStorage.removeItem(STORAGE_URL_KEY);
+  localStorage.removeItem(STORAGE_KEY_KEY);
+}
+
+let _client: ReturnType<typeof createClient<Database>> | null = null;
+
+function makeClient() {
+  const url = resolveUrl();
+  const anonKey = resolveAnonKey();
+  if (!url || !anonKey) {
+    throw new Error(
+      'Supabase не настроен: задайте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в окружении или введите их на экране настройки.',
+    );
+  }
+  return createClient<Database>(url, anonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+}
+
+// Ленивый клиент: чтобы экран настройки мог отрендериться даже без конфигурации.
+const hasEnvKeys = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export function sb(): ReturnType<typeof createClient<Database>> {
+  if (!_client) {
+    const url = resolveUrl();
+    const key = resolveAnonKey();
+    if ((!url || !key) && (hasEnvKeys || url)) {
+      // placeholder: реальные запросы всё равно блокирует gate-экран настройки
+      _client = createClient<Database>('https://placeholder.supabase.co', 'public-anon-placeholder-key');
+    } else {
+      _client = makeClient();
+    }
+  }
+  return _client;
+}
+
+// Прокси, чтобы существующий код (`import { supabase }`) работал с ленивым клиентом.
+export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
+  get(_t, prop) {
+    return Reflect.get(sb(), prop);
+  },
 });
 
 // ---------- Типобезопасная обёртка над PostgREST ----------
