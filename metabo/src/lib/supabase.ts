@@ -23,11 +23,9 @@ export const supabase = createClient<Database>(url, anonKey, {
 // В проде перегенерировать типы DB и убрать обёртку: npx supabase gen types typescript.
 type Tables = Database['public']['Tables'];
 type TableName = keyof Tables;
-// DECISION: Relationships — служебное поле supabase-типов, исключаем из Row/Insert.
-type Rel<T extends TableName> = Tables[T]['Row'] extends { Relationships: unknown } ? { Relationships: unknown } : never;
-type RowOf<T extends TableName> = Omit<Tables[T]['Row'], 'Relationships'>;
+type RowOf<T extends TableName> = Tables[T]['Row'];
 type InsertOf<T extends TableName> = Tables[T]['Insert'];
-type UpdateOf<T extends TableName> = Partial<Omit<RowOf<T>, 'id' | 'user_id' | 'created_at'>>;
+type UpdateOf<T extends TableName> = Tables[T]['Update'];
 type Err = { message: string } | null;
 
 // Цепочка фильтров: каждый метод возвращает «универсальный» интерфейс — он одновременно

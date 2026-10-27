@@ -32,7 +32,7 @@ export function useSetGoal() {
         target_date: g.targetDate.slice(0, 10), assessment: g.assessment, is_active: true,
       }).select().single();
       if (error) throw new Error(error.message);
-      return toGoal(data);
+      return toGoal(data!);
     },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: goalKey }); void qc.invalidateQueries({ queryKey: ['daily_history'] }); },
   });

@@ -3,7 +3,7 @@ import { Body3D } from '@/features/map/Body3D';
 import { FAT_HELP, MUSCLE_HELP, MacroRow, ProcessCard } from '@/features/map/ProcessCard';
 import { getContextText, type SimResult } from '@/math/simulation';
 import { formatSigned } from '@/lib/format';
-import type { Activity, FoodLog, Goal } from '@/types/domain';
+import type { Activity, Baseline, FoodLog, Goal } from '@/types/domain';
 import { computePlan } from '@/math/goal';
 
 type Plan = NonNullable<ReturnType<typeof computePlan>>;
@@ -18,6 +18,7 @@ export interface TodayData {
 }
 
 interface Props {
+  baseline: Baseline;
   todayData: TodayData;
   sim: SimResult | null;
   plan: Plan | null;
@@ -29,8 +30,9 @@ interface Props {
   onGoToGoal: () => void;
 }
 
-export function MetabolismMap({ todayData, sim, plan, hasAnyData, goal,
+export function MetabolismMap({ baseline, todayData, sim, plan, hasAnyData, goal,
   foodLogs, activities, onOpenLogger, onGoToGoal }: Props) {
+  void baseline; // в прототипе передан, но используется только App (сохраняем сигнатуру 1:1)
   const { tdee, caloriesConsumed, balance, macros, sleepHours, hasStrength } = todayData;
   const context = sim ? getContextText(foodLogs, activities, new Date()) : 'Загрузка...';
   const targetPlan = goal?.assessment || null;

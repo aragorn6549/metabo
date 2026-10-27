@@ -60,7 +60,7 @@ export function useCreateActivity() {
         started_at: new Date(a.timestamp ?? Date.now()).toISOString(),
       }).select().single();
       if (error) throw new Error(error.message);
-      return toActivity(data);
+      return toActivity(data!);
     },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: activitiesKey }); void qc.invalidateQueries({ queryKey: ['daily_history'] }); },
   });

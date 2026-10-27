@@ -48,7 +48,7 @@ export function useCreateFoodLog() {
         consumed_at: new Date(log.timestamp ?? Date.now()).toISOString(),
       }).select().single();
       if (error) throw new Error(error.message);
-      return toFoodLog(data);
+      return toFoodLog(data!);
     },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: foodLogsKey }); void qc.invalidateQueries({ queryKey: ['daily_history'] }); },
   });
