@@ -36,7 +36,6 @@ export type GoalAssessmentJson = {
 };
 
 export type Profile = {
-  Relationships: [{ foreignKeyName: 'profiles_id_fkey'; columns: ['id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   email: string;
   name: string | null;
@@ -50,7 +49,6 @@ export type Profile = {
 };
 
 export type InbodyLog = {
-  Relationships: [{ foreignKeyName: 'inbody_logs_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   measured_at: string;
@@ -63,7 +61,6 @@ export type InbodyLog = {
 };
 
 export type FoodLogRow = {
-  Relationships: [{ foreignKeyName: 'food_logs_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   name: string;
@@ -76,7 +73,6 @@ export type FoodLogRow = {
 };
 
 export type ActivityRow = {
-  Relationships: [{ foreignKeyName: 'activities_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   type: ActivityType;
@@ -90,7 +86,6 @@ export type ActivityRow = {
 };
 
 export type DishRow = {
-  Relationships: [{ foreignKeyName: 'dishes_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   name: string;
@@ -102,7 +97,6 @@ export type DishRow = {
 };
 
 export type GoalRow = {
-  Relationships: [{ foreignKeyName: 'goals_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   target_type: TargetType;
@@ -114,7 +108,6 @@ export type GoalRow = {
 };
 
 export type DailyHistoryRow = {
-  Relationships: [{ foreignKeyName: 'daily_history_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   day: string; // date
@@ -150,27 +143,27 @@ export type Database = {
       food_logs: {
         Row: FoodLogRow;
         Insert: Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
-        Update: { name?: string; calories?: number; protein?: number; fat?: number; carbs?: number; consumed_at?: string };
+        Update: Partial<Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'>>;
       };
       activities: {
         Row: ActivityRow;
         Insert: Omit<ActivityRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
-        Update: { type?: ActivityType; subtype?: ActivitySubtype | null; duration_min?: number | null; calories?: number | null; hours?: number | null; quality?: number | null; started_at?: string };
+        Update: Partial<Omit<ActivityRow, 'id' | 'created_at' | 'user_id'>>;
       };
       dishes: {
         Row: DishRow;
         Insert: Omit<DishRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
-        Update: { name?: string; calories?: number; protein?: number; fat?: number; carbs?: number };
+        Update: Partial<Omit<DishRow, 'id' | 'created_at' | 'user_id'>>;
       };
       goals: {
         Row: GoalRow;
         Insert: Omit<GoalRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
-        Update: { target_type?: TargetType; target_value?: number; target_date?: string; assessment?: GoalAssessmentJson; is_active?: boolean };
+        Update: Partial<Omit<GoalRow, 'id' | 'created_at' | 'user_id'>>;
       };
       daily_history: {
         Row: DailyHistoryRow;
         Insert: Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
-        Update: { day?: string; weight_kg?: number | null; fat_percent?: number | null; muscle_percent?: number | null; calories_consumed?: number | null; balance?: number | null; fat_oxidized?: number | null; fat_stored?: number | null; muscle_net?: number | null };
+        Update: Partial<Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'>>;
       };
     };
     Views: Record<string, never>;

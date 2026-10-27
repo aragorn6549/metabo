@@ -72,7 +72,7 @@ export function useCreateInBodyLog() {
         bmr, bmi,
       }).select().single();
       if (error) throw new Error(error.message);
-      return toInBody(data);
+      return toInBody(data!);
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: inbodyKey });
