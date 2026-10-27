@@ -15,14 +15,19 @@ export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
   if (isSupabaseConfigured()) return <>{children}</>;
 
   const save = () => {
-    const u = url.trim();
-    const k = key.trim();
-    if (!/^[a-z0-9-]+\.supabase\.co/i.test(u.replace(/^https?:\/\//i, ''))) {
-      setErr('Введите адрес проекта вида https://xxxxxxxx.supabase.co (он виден в Supabase: Project Settings → API → Project URL)');
+    let u = url.trim();
+    let k = key.trim();
+    // Авточинимые частые ошибки ручного ввода:
+    if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;   // вставили URL без протокола
+    u = u.replace(/\/+$/, '');
+    if (k.startsWith('"') || k.startsWith("'")) k = k.slice(1); // случайно скопировали кавычку
+    if (k.endsWith('"') || k.endsWith("'")) k = k.slice(0, -1);
+    if (!/^[a-z0-9.-]+\.supabase\.co/i.test(u.replace(/^https?:\/\//i, ''))) {
+      setErr('Введите адрес проекта вида https://xxxxxxxx.supabase.co — он виден в Supabase: Project Settings → API → Project URL');
       return;
     }
     if (k.length < 20) {
-      setErr('Введите anon public key (Project Settings → API → tab "Project API keys" → значение publishable/anon key, длинная строка)');
+      setErr('Введите anon public key целиком (Project Settings → API → Project API keys → anon public → Reveal и скопируйте всю длинную строку)');
       return;
     }
     setSupabaseUrl(u);
