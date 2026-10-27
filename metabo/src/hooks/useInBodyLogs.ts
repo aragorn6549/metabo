@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import { toBaseline, toInBody } from '@/lib/converters';
 import { useAuthStore } from '@/store/authStore';
 import { profileKey } from '@/hooks/useProfile';
@@ -14,7 +14,7 @@ export function useInBodyLogs() {
   return useQuery({
     queryKey: [...inbodyKey, 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('inbody_logs').select('*').order('measured_at', { ascending: true });
+      const { data, error } = await db().from('inbody_logs').select('*').order('measured_at', { ascending: true });
       if (error) throw new Error(error.message);
       return (data as InbodyLog[]).map(toInBody);
     },
@@ -48,7 +48,7 @@ function useProfileForBaseline() {
   return useQ({
     queryKey: profileKey,
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId!).maybeSingle();
+      const { data } = await db().from('profiles').select('*').eq('id', userId!).maybeSingle();
       return (data ?? null) as Profile | null;
     },
     enabled: !!userId,
@@ -61,12 +61,12 @@ export function useCreateInBodyLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (e: NewInBody) => {
-      const { data: profile } = await supabase.from('profiles').select('*').single();
+      const { data: profile } = await db().from('profiles').select('*').single();
       if (!profile) throw new Error('Профиль не найден');
       const p = profile as unknown as Profile;
       const bmr = Math.round(calculateBMR(e.weight, p.height_cm ?? 0, p.age ?? 30, p.gender ?? 'male'));
       const bmi = calcBMI(e.weight, p.height_cm ?? 0);
-      const { data, error } = await (supabase.from('inbody_logs') as any).insert({
+      const { data, error } = await db().from('inbody_logs').insert({
         measured_at: new Date(e.date).toISOString(),
         weight_kg: e.weight, fat_percent: e.fatPercent, muscle_percent: e.musclePercent,
         bmr, bmi,
@@ -85,7 +85,7 @@ export function useUpdateInBodyLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...e }: NewInBody & { id: string }) => {
-      const { error } = await (supabase.from('inbody_logs') as any).update({
+      const { error } = await db().from('inbody_logs').update({
         measured_at: new Date(e.date).toISOString(),
         weight_kg: e.weight, fat_percent: e.fatPercent, muscle_percent: e.musclePercent,
       }).eq('id', id);
@@ -99,7 +99,7 @@ export function useDeleteInBodyLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('inbody_logs').delete().eq('id', id);
+      const { error } = await db().from('inbody_logs').delete().eq('id', id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: inbodyKey }),

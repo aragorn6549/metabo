@@ -1,7 +1,7 @@
 // Onboarding — UI 1:1 с прототипом. Запись: profiles (name/age/gender/height/activity) + первый inbody_logs (§8.1).
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import { NumberInput } from '@/components/NumberInput';
 import { useToast } from '@/components/ui';
 import { calculateBMR, calcBMI } from '@/math/bmr';
@@ -35,22 +35,22 @@ export function Onboarding({ initial, onCancel }: {
     if (!user) return;
     setErr(''); setBusy(true);
     try {
-      const { error: pErr } = await supabase.from('profiles').update({
+      const { error: pErr } = await db().from('profiles').update({
         name: form.name || null, age: +form.age, gender: form.gender,
         height_cm: +form.height, activity_level: form.activityLevel,
-      } as Partial<Profile>).eq('id', user.id);
+      }).eq('id', user.id);
       if (pErr) throw new Error(pErr.message);
 
-      const { error: iErr } = await supabase.from('inbody_logs').insert({
+      const { error: iErr } = await db().from('inbody_logs').insert({
         measured_at: new Date().toISOString(),
         weight_kg: +form.weight, fat_percent: +form.fatPercent, muscle_percent: +form.musclePercent,
         bmr: Math.round(bmr), bmi: calcBMI(+form.weight, +form.height),
-      } as Partial<InbodyLog>);
+      });
       if (iErr) throw new Error(iErr.message);
 
       // DECISION (§10): демо-сид — вызов SQL-функции seed_demo_data(uid) из миграции.
       if (asDemo ?? isDemoFlow) {
-        const { error: sErr } = await supabase.rpc('seed_demo_data', { uid: user.id } as never);
+        const { error: sErr } = await db().rpc('seed_demo_data', { uid: user.id } as never);
         if (sErr) console.warn('seed_demo_data:', sErr.message);
       }
       toast('✓ Данные сохранены');

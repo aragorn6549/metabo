@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { Profile } from '@/types/db';
 
@@ -9,7 +9,7 @@ export function useProfile() {
   return useQuery({
     queryKey: profileKey,
     queryFn: async () => {
-      const { data, error } = await supabase.from('profiles')
+      const { data, error } = await db().from('profiles')
         .select('*').eq('id', userId!).maybeSingle();
       if (error) throw new Error(error.message);
       return data as Profile | null;
@@ -27,7 +27,7 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: async (patch: ProfilePatch) => {
       // DECISION: приведение к Partial<Profile> нужно из-за nullable-полей в профиле.
-      const { data, error } = await supabase.from('profiles')
+      const { data, error } = await db().from('profiles')
         .update(patch as Partial<Profile>).eq('id', userId!).select().single();
       if (error) throw new Error(error.message);
       return data as unknown as Profile;

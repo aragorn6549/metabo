@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import type { Profile } from '@/types/db';
 import { useAuthStore } from '@/store/authStore';
 
@@ -44,7 +44,7 @@ export function AuthScreen() {
       const { data, error: err } = await (await import('@/lib/supabase')).supabase.auth.signInAnonymously();
       if (err) { setError('Демо недоступно: ' + err.message); return; }
       if (data.user) {
-        await supabase.from('profiles').update({ is_demo: true } as Partial<Profile>).eq('id', data.user.id);
+        await db().from('profiles').update({ is_demo: true } as never).eq('id', data.user.id);
       }
       navigate('/onboarding?demo=1');
     } finally {

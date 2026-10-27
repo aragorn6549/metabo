@@ -142,33 +142,35 @@ export type Database = {
       };
       inbody_logs: {
         Row: InbodyLog;
-        Insert: { measured_at: string; weight_kg: number; fat_percent: number; muscle_percent: number; bmr: number; bmi?: number | null };
-        Update: Partial<InbodyLog>;
+        Insert: { user_id?: string; measured_at: string; weight_kg: number; fat_percent: number; muscle_percent: number; bmr: number; bmi?: number | null };
+        // DECISION: Update-типы — только изменяемые поля (без id/user_id/created_at),
+        // иначе supabase-js выводит never для .update(Partial<Row>).
+        Update: { measured_at?: string; weight_kg?: number; fat_percent?: number; muscle_percent?: number; bmr?: number; bmi?: number | null };
       };
       food_logs: {
         Row: FoodLogRow;
-        Insert: Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'>;
-        Update: Partial<FoodLogRow>;
+        Insert: Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
+        Update: { name?: string; calories?: number; protein?: number; fat?: number; carbs?: number; consumed_at?: string };
       };
       activities: {
         Row: ActivityRow;
-        Insert: Omit<ActivityRow, 'id' | 'created_at' | 'user_id'>;
-        Update: Partial<ActivityRow>;
+        Insert: Omit<ActivityRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
+        Update: { type?: ActivityType; subtype?: ActivitySubtype | null; duration_min?: number | null; calories?: number | null; hours?: number | null; quality?: number | null; started_at?: string };
       };
       dishes: {
         Row: DishRow;
-        Insert: Omit<DishRow, 'id' | 'created_at' | 'user_id'>;
-        Update: Partial<DishRow>;
+        Insert: Omit<DishRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
+        Update: { name?: string; calories?: number; protein?: number; fat?: number; carbs?: number };
       };
       goals: {
         Row: GoalRow;
-        Insert: Omit<GoalRow, 'id' | 'created_at' | 'user_id'>;
-        Update: Partial<GoalRow>;
+        Insert: Omit<GoalRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
+        Update: { target_type?: TargetType; target_value?: number; target_date?: string; assessment?: GoalAssessmentJson; is_active?: boolean };
       };
       daily_history: {
         Row: DailyHistoryRow;
-        Insert: Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'>;
-        Update: Partial<DailyHistoryRow>;
+        Insert: Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'> & { user_id?: string };
+        Update: { day?: string; weight_kg?: number | null; fat_percent?: number | null; muscle_percent?: number | null; calories_consumed?: number | null; balance?: number | null; fat_oxidized?: number | null; fat_stored?: number | null; muscle_net?: number | null };
       };
     };
     Views: Record<string, never>;

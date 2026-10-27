@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase, db } from '@/lib/supabase';
 import { toGoal } from '@/lib/converters';
 import { useAuthStore } from '@/store/authStore';
 import type { GoalRow } from '@/types/db';
@@ -13,7 +13,7 @@ export function useActiveGoal() {
   return useQuery({
     queryKey: goalKey,
     queryFn: async () => {
-      const { data, error } = await supabase.from('goals').select('*').eq('is_active', true).maybeSingle();
+      const { data, error } = await db().from('goals').select('*').eq('is_active', true).maybeSingle();
       if (error) throw new Error(error.message);
       return data ? toGoal(data as GoalRow) : null;
     },
@@ -26,8 +26,8 @@ export function useSetGoal() {
   return useMutation({
     mutationFn: async (g: Goal) => {
       // деактивируем прежнюю, вставляем новую со снапшотом assessment
-      await (supabase.from('goals') as any).update({ is_active: false }).eq('is_active', true);
-      const { data, error } = await (supabase.from('goals') as any).insert({
+      await db().from('goals').update({ is_active: false }).eq('is_active', true);
+      const { data, error } = await db().from('goals').insert({
         target_type: g.targetType, target_value: g.targetValue,
         target_date: g.targetDate.slice(0, 10), assessment: g.assessment, is_active: true,
       }).select().single();
@@ -42,7 +42,7 @@ export function useDeleteGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('goals').delete().eq('is_active', true);
+      const { error } = await db().from('goals').delete().eq('is_active', true);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: goalKey }),
