@@ -1,7 +1,8 @@
 // GoalTab — форма цели + оценка реалистичности. UI 1:1 с прототипом (§8.5).
 import { useMemo, useState } from 'react';
 import { NumberInput } from '@/components/NumberInput';
-import type { Baseline, Goal, TargetType } from '@/types/domain';
+import type { Baseline, Goal } from '@/types/domain';
+import type { TargetType } from '@/types/db';
 import { assessGoal, computePlan } from '@/math/goal';
 
 type Plan = NonNullable<ReturnType<typeof computePlan>>;
@@ -83,12 +84,12 @@ export function GoalTab({ baseline, tdee, goal, plan, onSetGoal }: Props) {
                   {assessment.dailyCalorieAdjustment > 0 ? '+' : ''}{assessment.dailyCalorieAdjustment} ккал</div></div>
               <div className="goal-detail"><div className="goal-detail-label">Реалистичная дата</div>
                 <div className="goal-detail-value">
-                  {assessment.realisticDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}</div></div>
+                  {new Date(assessment.realisticDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}</div></div>
             </div>
             {!assessment.isFeasible && (
               <div className="goal-warning">
                 ⚠ {assessment.limitDescription}. Сдвиньте дату на{' '}
-                <strong>{assessment.realisticDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>{' '}
+                <strong>{new Date(assessment.realisticDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>{' '}
                 или менее амбициозную цель.
               </div>
             )}

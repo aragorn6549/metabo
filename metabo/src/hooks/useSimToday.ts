@@ -32,12 +32,12 @@ export function useSaveYesterday(baseline: Baseline | null, todayData: TodayData
     const yActs = activities.filter(a => a.timestamp >= Number(dayStart) && a.timestamp < Number(dayEnd));
     if (yFoods.length === 0 && yActs.length === 0) return; // нечего сохранять
     savedRef.current = dayKey;
-    const wCal = yActs.filter(a => a.type === 'workout').reduce((s, a) => s + (+a.calories || 0), 0);
+    const wCal = yActs.filter(a => a.type === 'workout').reduce((s, a) => s + ((a.calories ?? 0)), 0);
     const macros = yFoods.reduce((acc, f) => ({
       protein: acc.protein + (+f.protein || 0), fat: acc.fat + (+f.fat || 0), carbs: acc.carbs + (+f.carbs || 0),
     }), { protein: 0, fat: 0, carbs: 0 });
     const calC = yFoods.reduce((s, f) => s + (+f.calories || 0), 0);
-    const sleepH = yActs.filter(a => a.type === 'sleep').reduce((s, a) => s + (+a.hours || 0), 0) || 8;
+    const sleepH = yActs.filter(a => a.type === 'sleep').reduce((s, a) => s + ((a.hours ?? 0)), 0) || 8;
     const tdee = require('@/math/bmr').calculateTDEE(baseline.bmr, baseline.activityLevel, wCal, macros);
     const balance = calC - tdee;
     const sim = simulateDay(yFoods, yActs, balance);

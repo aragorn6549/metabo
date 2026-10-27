@@ -36,6 +36,7 @@ export type GoalAssessmentJson = {
 };
 
 export type Profile = {
+  Relationships: [{ foreignKeyName: 'profiles_id_fkey'; columns: ['id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   email: string;
   name: string | null;
@@ -49,6 +50,7 @@ export type Profile = {
 };
 
 export type InbodyLog = {
+  Relationships: [{ foreignKeyName: 'inbody_logs_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   measured_at: string;
@@ -61,6 +63,7 @@ export type InbodyLog = {
 };
 
 export type FoodLogRow = {
+  Relationships: [{ foreignKeyName: 'food_logs_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   name: string;
@@ -73,6 +76,7 @@ export type FoodLogRow = {
 };
 
 export type ActivityRow = {
+  Relationships: [{ foreignKeyName: 'activities_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   type: ActivityType;
@@ -86,6 +90,7 @@ export type ActivityRow = {
 };
 
 export type DishRow = {
+  Relationships: [{ foreignKeyName: 'dishes_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   name: string;
@@ -97,6 +102,7 @@ export type DishRow = {
 };
 
 export type GoalRow = {
+  Relationships: [{ foreignKeyName: 'goals_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   target_type: TargetType;
@@ -108,6 +114,7 @@ export type GoalRow = {
 };
 
 export type DailyHistoryRow = {
+  Relationships: [{ foreignKeyName: 'daily_history_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
   id: string;
   user_id: string;
   day: string; // date
@@ -122,42 +129,45 @@ export type DailyHistoryRow = {
   created_at: string;
 };
 
+// DECISION: supabase-js v2.109 требует маркер __InternalSupabase (см. postgrest-js/dist/cjs/types.d.ts) —
+// без него все Insert/Update выводятся как never.
 export type Database = {
+  __InternalSupabase: { PostgrestVersion: '12' };
   public: {
     Tables: {
       profiles: {
         Row: Profile;
-        Insert: Partial<Profile> & { id: string; email: string };
-        Update: Partial<Profile>;
+        Insert: { id?: string; email?: string; name?: string | null; age?: number | null; gender?: Gender | null; height_cm?: number | null; activity_level?: ActivityLevel | null; is_demo?: boolean };
+        Update: { name?: string | null; age?: number | null; gender?: Gender | null; height_cm?: number | null; activity_level?: ActivityLevel | null; is_demo?: boolean };
       };
       inbody_logs: {
         Row: InbodyLog;
-        Insert: Partial<InbodyLog> & Omit<InbodyLog, 'id' | 'created_at'>;
+        Insert: { measured_at: string; weight_kg: number; fat_percent: number; muscle_percent: number; bmr: number; bmi?: number | null };
         Update: Partial<InbodyLog>;
       };
       food_logs: {
         Row: FoodLogRow;
-        Insert: Partial<FoodLogRow> & Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'>;
+        Insert: Omit<FoodLogRow, 'id' | 'created_at' | 'user_id'>;
         Update: Partial<FoodLogRow>;
       };
       activities: {
         Row: ActivityRow;
-        Insert: Partial<ActivityRow> & Omit<ActivityRow, 'id' | 'created_at' | 'user_id'>;
+        Insert: Omit<ActivityRow, 'id' | 'created_at' | 'user_id'>;
         Update: Partial<ActivityRow>;
       };
       dishes: {
         Row: DishRow;
-        Insert: Partial<DishRow> & Omit<DishRow, 'id' | 'created_at' | 'user_id'>;
+        Insert: Omit<DishRow, 'id' | 'created_at' | 'user_id'>;
         Update: Partial<DishRow>;
       };
       goals: {
         Row: GoalRow;
-        Insert: Partial<GoalRow> & Omit<GoalRow, 'id' | 'created_at' | 'user_id'>;
+        Insert: Omit<GoalRow, 'id' | 'created_at' | 'user_id'>;
         Update: Partial<GoalRow>;
       };
       daily_history: {
         Row: DailyHistoryRow;
-        Insert: Partial<DailyHistoryRow> & Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'>;
+        Insert: Omit<DailyHistoryRow, 'id' | 'created_at' | 'user_id'>;
         Update: Partial<DailyHistoryRow>;
       };
     };

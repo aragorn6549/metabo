@@ -4,7 +4,9 @@ import { FAT_HELP, MUSCLE_HELP, MacroRow, ProcessCard } from '@/features/map/Pro
 import { getContextText, type SimResult } from '@/math/simulation';
 import { formatSigned } from '@/lib/format';
 import type { Activity, FoodLog, Goal } from '@/types/domain';
-import type { Plan } from '@/math/goal';
+import { computePlan } from '@/math/goal';
+
+type Plan = NonNullable<ReturnType<typeof computePlan>>;
 
 export interface TodayData {
   tdee: number;

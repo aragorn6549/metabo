@@ -4,7 +4,6 @@ import { useAuthStore } from '@/store/authStore';
 import type { Profile } from '@/types/db';
 
 export const profileKey = ['profile'] as const;
-
 export function useProfile() {
   const userId = useAuthStore(s => s.user?.id);
   return useQuery({
@@ -27,12 +26,11 @@ export function useUpdateProfile() {
   const userId = useAuthStore(s => s.user?.id);
   return useMutation({
     mutationFn: async (patch: ProfilePatch) => {
-      // DECISION: cast через any допустим — shape патча проверяется ProfilePatch,
-      // а вывод Update-типа supabase-js при ручных типах даёт never (известная проблема).
-      const { data, error } = await (supabase.from('profiles') as any)
-        .update(patch).eq('id', userId!).select().single();
+      // DECISION: приведение к Partial<Profile> нужно из-за nullable-полей в профиле.
+      const { data, error } = await supabase.from('profiles')
+        .update(patch as Partial<Profile>).eq('id', userId!).select().single();
       if (error) throw new Error(error.message);
-      return data as Profile;
+      return data as unknown as Profile;
     },
     onSuccess: (row) => qc.setQueryData(profileKey, row),
   });
