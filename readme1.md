@@ -126,8 +126,9 @@ metabo/
 ├── tsconfig.json
 ├── package.json
 ├── vercel.json
+|── README1.md
 └── README.md
-4. Supabase: схема БД
+5. Supabase: схема БД
 Создай проект Supabase, включи Email/Password Auth, и примени миграцию.
 
 sql
