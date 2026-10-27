@@ -1,10 +1,10 @@
 // ActivityLogger — модалка с 4 табами (Еда/Тренировка/Сон/Прочее). Перенос UI 1:1 (§8.4).
 // DECISION: мет-константы и названия типов активностей вынесены в lib/constants.ts (ACTIVITY_PRESETS),
-// калории через calcMETCalories (math/tdee.ts) — значения идентичны прототипу.
+// калории через calcMETCalories (math/bmr.ts) — значения идентичны прототипу.
 import { useState } from 'react';
 import { NumberInput } from '@/components/NumberInput';
 import { ACTIVITY_PRESETS, SLEEP_QUALITY_LABELS } from '@/lib/constants';
-import { calcMETCalories } from '@/math/tdee';
+import { calcMETCalories } from '@/math/bmr';
 import type { Activity, Baseline, Dish, FoodLog, LogEntry } from '@/types/domain';
 
 export type LoggerTab = 'food' | 'workout' | 'sleep' | 'other';
