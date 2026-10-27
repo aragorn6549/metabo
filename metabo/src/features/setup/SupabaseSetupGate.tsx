@@ -1,18 +1,22 @@
-// Экран первичной настройки: если VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY не заданы
-// в окружении — просим ввести их один раз. Сохраняем в localStorage.
+// src/features/setup/SupabaseSetupGate.tsx
 import { useState } from 'react';
-import {
-  getSupabaseAnonKey, getSupabaseUrl, isSupabaseConfigured,
-  setSupabaseAnonKey, setSupabaseUrl,
-} from '@/lib/supabase';
+import { getSupabaseConfig, saveSupabaseConfig } from '../../lib/supabase';
 
-export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
-  const [url, setUrl] = useState(getSupabaseUrl());
-  const [key, setKey] = useState(getSupabaseAnonKey());
+interface Props {
+  onReady: () => void;
+}
+
+/**
+ * Экран «Настройка подключения»: показывается, если VITE_SUPABASE_URL /
+ * VITE_SUPABASE_ANON_KEY не заданы в окружении. Пользователь вводит
+ * Project URL и anon public key из панели Supabase — они сохраняются
+ * в localStorage браузера. Ключи публичные (anon), доступ к чужим данным
+ * запрещён политиками RLS.
+ */
+export default function SupabaseSetupGate({ onReady }: Props) {
+  const [url, setUrl] = useState(getSupabaseConfig().url);
+  const [key, setKey] = useState(getSupabaseConfig().key);
   const [err, setErr] = useState('');
-
-  // Настроен полностью (env или сохранённые значения) — пускаем дальше
-  if (isSupabaseConfigured()) return <>{children}</>;
 
   const save = () => {
     let u = url.trim();
@@ -30,9 +34,9 @@ export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
       setErr('Введите anon public key целиком (Project Settings → API → Project API keys → anon public → Reveal и скопируйте всю длинную строку)');
       return;
     }
-    setSupabaseUrl(u);
-    setSupabaseAnonKey(k);
-    window.location.reload();
+    saveSupabaseConfig(u, k);
+    setErr('');
+    onReady();
   };
 
   return (
