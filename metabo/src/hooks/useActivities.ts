@@ -49,6 +49,24 @@ export interface NewActivity {
   calories?: number; hours?: number; quality?: number; timestamp?: number;
 }
 
+/** Обновление активности (логгер, режим редактирования — §8.4) */
+export function useUpdateActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...a }: NewActivity & { id: string }) => {
+      const body: Record<string, unknown> = {
+        type: a.type, subtype: a.subtype ?? null,
+        duration_min: a.duration ?? null, calories: a.calories ?? null,
+        hours: a.hours ?? null, quality: a.quality ?? null,
+      };
+      if (a.timestamp != null) body.started_at = new Date(a.timestamp).toISOString();
+      const { error } = await db().from('activities').update(body).eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: activitiesKey }); void qc.invalidateQueries({ queryKey: ['daily_history'] }); },
+  });
+}
+
 export function useCreateActivity() {
   const qc = useQueryClient();
   return useMutation({
