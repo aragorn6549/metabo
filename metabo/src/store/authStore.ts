@@ -19,11 +19,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
 
   init: async () => {
-    const { data } = await supabase.auth.getSession();
-    set({ session: data.session, user: data.session?.user ?? null, loading: false });
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null, loading: false });
-    });
+    try {
+      const { data } = await supabase.auth.getSession();
+      set({ session: data.session, user: data.session?.user ?? null, loading: false });
+      supabase.auth.onAuthStateChange((_event, session) => {
+        set({ session, user: session?.user ?? null, loading: false });
+      });
+    } catch {
+      // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
+      // дальше просто редерим на /login без сессии.
+      set({ session: null, user: null, loading: false });
+    }
   },
 
   signIn: async (email, password) => {
