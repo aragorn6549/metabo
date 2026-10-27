@@ -3,27 +3,26 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { Component, type ErrorInfo } from 'react';
 
 // ---------- Toasts ----------
-interface ToastItem { id: number; text: string; kind: 'ok' | 'err' }
-type ToastFn = (text: string, kind?: 'ok' | 'err') => void;
+// DECISION: классы .toast/.success/.danger/.goal перенесены 1:1 из прототипа (global.css)
+interface ToastItem { id: number; text: string; kind: 'success' | 'danger' | 'goal' }
+type ToastFn = (text: string, kind?: 'success' | 'danger' | 'goal') => void;
 
 const ToastCtx = createContext<ToastFn>(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const push = useCallback<ToastFn>((text, kind = 'ok') => {
+  const push = useCallback<ToastFn>((text, kind = 'success') => {
     const id = Date.now() + Math.random();
     setToasts(t => [...t, { id, text, kind }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2500); // как в прототипе
   }, []);
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="toast-stack">
-        {toasts.map(t => (
-          <div key={t.id} className={`toast ${t.kind === 'err' ? 'toast-err' : ''}`}>{t.text}</div>
-        ))}
-      </div>
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.kind}`}>{t.text}</div>
+      ))}
     </ToastCtx.Provider>
   );
 }

@@ -17,7 +17,8 @@ interface EditorProps {
 export function InBodyEditor({ entry, baseline, onSave, onClose }: EditorProps) {
   const isEdit = !!entry?.id;
   const autoBmi = (w: number, h: number) => w > 0 && h > 0 ? +(w / Math.pow(h / 100, 2)).toFixed(1) : 0;
-  const [form, setForm] = useState(() => {
+  type FormState = { id?: string; date: string; weight: number; fatPercent: number; musclePercent: number; bmr: number; bmi: number | null };
+  const [form, setForm] = useState<FormState>(() => {
     if (entry) {
       const d = new Date(entry.date);
       const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -33,13 +34,15 @@ export function InBodyEditor({ entry, baseline, onSave, onClose }: EditorProps) 
     };
   });
   const [err, setErr] = useState('');
-  const update = (f: string, v: number | string) => setForm((prev: Record<string, unknown>) => ({ ...prev, [f]: v }));
+  const update = (f: keyof FormState, v: number | string | null) =>
+    setForm(prev => ({ ...prev, [f]: v }));
 
-  const setWeight = (v: number) => {
-    setForm((prev: Record<string, unknown>) => ({
+  const setWeight = (v: number | '') => {
+    const w = typeof v === 'number' ? v : 0;
+    setForm(prev => ({
       ...prev,
-      weight: v,
-      bmi: (v > 0 && baseline?.height) ? autoBmi(+v, baseline.height) : prev.bmi,
+      weight: w,
+      bmi: (w > 0 && baseline?.height) ? autoBmi(w, baseline.height) : prev.bmi,
     }));
   };
 
@@ -54,7 +57,7 @@ export function InBodyEditor({ entry, baseline, onSave, onClose }: EditorProps) 
       fatPercent: +form.fatPercent,
       musclePercent: +form.musclePercent,
       bmr: +form.bmr,
-      bmi: +form.bmi,
+      bmi: form.bmi != null ? +form.bmi : null,
     });
   };
 
@@ -80,7 +83,7 @@ export function InBodyEditor({ entry, baseline, onSave, onClose }: EditorProps) 
             <div className="field"><label>BMR (ккал)</label>
               <NumberInput value={form.bmr} onChange={v => update('bmr', v)} /></div>
             <div className="field full"><label>ИМТ</label>
-              <NumberInput value={form.bmi} onChange={v => update('bmi', v)} /></div>
+              <NumberInput value={form.bmi ?? ''} onChange={v => update('bmi', v === '' ? null : v)} /></div>
           </div>
           {err && <div className="auth-error" style={{ marginBottom: 16 }}>⚠ {err}</div>}
           <button className="btn" style={{ marginTop: 8 }} onClick={handleSubmit}>
