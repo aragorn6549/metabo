@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
+// Демо-режим (§10) временно отключён: возвращение кнопки запланировано после стабилизации Auth.
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { db, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -12,7 +12,6 @@ export function AuthScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const navigate = useNavigate();
   const { signIn, signUp } = useAuthStore();
 
   const doAuth = async () => {
@@ -26,7 +25,7 @@ export function AuthScreen() {
     const e = email.trim();
     if (!e || !password) { setError('Заполните оба поля'); return; }
     if (!e.includes('@')) { setError('Введите корректный email'); return; }
-    if (password.length < 6) { setError('Пароль минимум 6 символов (требование Supabase)'); return; }
+    if (mode === 'register' && password.length < 6) { setError('Пароль минимум 6 символов (требование Supabase)'); return; }
     setBusy(true);
     try {
       if (mode === 'register') {
@@ -36,27 +35,21 @@ export function AuthScreen() {
         // при отключённом подтверждении email сессия появится через onAuthStateChange → редирект
       } else {
         const res = await signIn(e, password);
-        if (res.error) setError(res.error);
+        if (res.error) {
+          let msg = res.error;
+          const low = msg.toLowerCase();
+          if (low.includes('invalid login credentials')) {
+            msg = 'Неверный email или пароль. Если аккаунт создавался раньше — нажмите «Регистрация» и создайте новый.';
+          } else if (low.includes('email not confirmed')) {
+            msg = 'Email не подтверждён. В Supabase: Authentication → Providers → Email → выключите "Confirm email", затем зарегистрируйтесь заново.';
+          } else if (low.includes('failed to fetch') || low.includes('networkerror')) {
+            msg = 'Нет связи с Supabase. Проверьте Project URL (должен быть вида https://xxxx.supabase.co).';
+          }
+          setError(msg);
+        } else {
+          setNotice('✓ Вход выполнен, перенаправляем…');
+        }
       }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDemo = async () => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase не настроен на этом устройстве. Перезагрузите страницу (Ctrl+Shift+R) и введите URL проекта и anon-ключ на экране настройки.');
-      return;
-    }
-    setBusy(true);
-    try {
-      // DECISION (§10): демо = анонимный вход + is_demo=true в profiles.
-      const { data, error: err } = await supabase.auth.signInAnonymously();
-      if (err) { setError('Демо недоступно: ' + err.message + '. Включите Anonymous sign-ins в Supabase → Authentication → Providers.'); return; }
-      if (data.user) {
-        await db().from('profiles').update({ is_demo: true } as never).eq('id', data.user.id);
-      }
-      navigate('/onboarding?demo=1');
     } finally {
       setBusy(false);
     }
@@ -67,16 +60,6 @@ export function AuthScreen() {
       <div className="auth-card">
         <div className="auth-logo">Meta<span>bo</span></div>
         <div className="auth-tag">Метаболизм в реальном времени</div>
-        <button type="button" className="btn goal" onClick={handleDemo} disabled={busy}
-          style={{ padding: '16px', fontSize: 15, marginBottom: 4 }}>
-          ⚡ Попробовать демо-режим
-        </button>
-        <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginBottom: 20 }}>
-          Без регистрации · сразу с примерами данных
-        </div>
-        <div className="auth-divider">
-          <div className="line" /><span className="text">или через аккаунт</span><div className="line" />
-        </div>
         <div className="auth-switch">
           <button type="button" className={mode === 'login' ? 'active' : ''}
             onClick={() => { setMode('login'); setError(''); setNotice(''); }}>Вход</button>
