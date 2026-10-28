@@ -6,7 +6,7 @@ import { NumberInput } from '@/components/NumberInput';
 import { useToast } from '@/components/ui';
 import { calculateBMR, calcBMI } from '@/math/bmr';
 import { useAuthStore } from '@/store/authStore';
-import type { ActivityLevel, Gender, InbodyLog, Profile } from '@/types/db';
+import type { ActivityLevel, Gender } from '@/types/db';
 
 interface FormState {
   name: string; age: number | ''; gender: Gender; height: number | '';

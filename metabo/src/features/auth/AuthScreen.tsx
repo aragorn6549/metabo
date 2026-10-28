@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, db, isSupabaseConfigured } from '@/lib/supabase';
-import type { Profile } from '@/types/db';
+
 import { useAuthStore } from '@/store/authStore';
 
 export function AuthScreen() {
