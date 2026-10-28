@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, db, isSupabaseConfigured } from '@/lib/supabase';
+import { db, isSupabaseConfigured } from '@/lib/supabase';
 
 import { useAuthStore } from '@/store/authStore';
 
