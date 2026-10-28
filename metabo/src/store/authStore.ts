@@ -22,26 +22,35 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { data } = await supabase.auth.getSession();
       set({ session: data.session, user: data.session?.user ?? null, loading: false });
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
         set({ session, user: session?.user ?? null, loading: false });
       });
     } catch {
       // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
-      // дальше просто редирект на /login без сессии.
+      // дальше просто редирим на /login без сессии.
       set({ session: null, user: null, loading: false });
     }
   },
 
   signIn: async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error?.message };
+    } catch (e) {
+      // Сетевая ошибка fetch (недоступен хост, CORS, битый URL) — иначе кнопка «молчит»
+      return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
+    }
   },
 
   signUp: async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    // DECISION: если подтверждение email включено, session === null — просим подтвердить.
-    return { needsConfirm: !data.session };
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return { error: error.message };
+      // DECISION: если подтверждение email включено, session === null — просим подтвердить.
+      return { needsConfirm: !data.session };
+    } catch (e) {
+      return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
+    }
   },
 
   signOut: async () => {
