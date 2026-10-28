@@ -18,9 +18,11 @@ const defaultForm = (): FormState => ({
   fatPercent: '', musclePercent: '', activityLevel: 'light',
 });
 
-export function Onboarding({ initial, onCancel }: {
+export function Onboarding({ initial, onCancel, onDone }: {
   initial?: Partial<FormState> | null;
   onCancel?: () => void;
+  /** вызывается после успешного сохранения вместо navigate('/') (используется из ProtectedLayout) */
+  onDone?: () => void;
 }) {
   const [form, setForm] = useState<FormState>(initial ? { ...defaultForm(), ...initial } as FormState : defaultForm());
   const [err, setErr] = useState('');
@@ -74,7 +76,7 @@ export function Onboarding({ initial, onCancel }: {
         if (sErr) console.warn('seed_demo_data:', sErr.message);
       }
       toast('✓ Данные сохранены');
-      navigate('/', { replace: true });
+      if (onDone) onDone(); else navigate('/', { replace: true });
     } catch (e) {
       setErr(String((e as Error).message || e));
     } finally {
@@ -111,7 +113,7 @@ export function Onboarding({ initial, onCancel }: {
               <option value="light">Лёгкая (1–3 трен./нед)</option>
               <option value="moderate">Средняя (3–5 трен./нед)</option>
               <option value="high">Высокая (6–7 трен./нед)</option>
-              <option value="athlete">Атлет (2 раза в день)</option>
+              <option value="extreme">Атлет (2 раза в день)</option>
             </select></div>
         </div>
         {err && <div className="auth-error" style={{ marginBottom: 16 }}>⚠ {err}</div>}
