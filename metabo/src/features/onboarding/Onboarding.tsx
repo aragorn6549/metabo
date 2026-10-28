@@ -14,6 +14,11 @@ interface FormState {
   activityLevel: ActivityLevel;
 }
 
+const defaultForm = (): FormState => ({
+  name: '', age: '', gender: 'male', height: '', weight: '',
+  fatPercent: '', musclePercent: '', activityLevel: 'light',
+});
+
 export function Onboarding({ initial, onCancel }: {
   initial?: Partial<FormState> | null;
   onCancel?: () => void;
@@ -35,10 +40,13 @@ export function Onboarding({ initial, onCancel }: {
     if (!user) return;
     setErr(''); setBusy(true);
     try {
-      const { error: pErr } = await db().from('profiles').update({
+      // upsert вместо update: строка profiles создаётся триггером только для email-пользователей;
+      // анонимные демо-сессии его не получают — вставка под защитой политики profiles_insert_self.
+      const { error: pErr } = await db().from('profiles').upsert({
+        id: user.id,
         name: form.name || null, age: +form.age, gender: form.gender,
         height_cm: +form.height, activity_level: form.activityLevel,
-      }).eq('id', user.id);
+      });
       if (pErr) throw new Error(pErr.message);
 
       const { error: iErr } = await db().from('inbody_logs').insert({
@@ -79,46 +87,33 @@ export function Onboarding({ initial, onCancel }: {
             <NumberInput value={form.age} onChange={v => set('age', v)} /></div>
           <div className="field"><label>Пол</label>
             <select value={form.gender} onChange={ev => set('gender', ev.target.value)}>
-              <option value="male">Мужской</option><option value="female">Женский</option>
+              <option value="male">Мужской</option>
+              <option value="female">Женский</option>
             </select></div>
-          <div className="field"><label>Рост (см)</label>
+          <div className="field"><label>Рост, см</label>
             <NumberInput value={form.height} onChange={v => set('height', v)} /></div>
-          <div className="field"><label>Вес (кг)</label>
+          <div className="field"><label>Вес, кг</label>
             <NumberInput value={form.weight} onChange={v => set('weight', v)} /></div>
-          <div className="field"><label>% жира</label>
+          <div className="field"><label>Жир, %</label>
             <NumberInput value={form.fatPercent} onChange={v => set('fatPercent', v)} /></div>
-          <div className="field"><label>% мышц</label>
+          <div className="field"><label>Мышцы, %</label>
             <NumberInput value={form.musclePercent} onChange={v => set('musclePercent', v)} /></div>
-          <div className="field full"><label>Уровень активности</label>
+          <div className="field full"><label>Активность</label>
             <select value={form.activityLevel} onChange={ev => set('activityLevel', ev.target.value)}>
-              <option value="sedentary">Сидячий</option>
-              <option value="light">Лёгкая (1-3 дня/нед)</option>
-              <option value="moderate">Умеренная (3-5)</option>
-              <option value="high">Высокая (6-7)</option>
-              <option value="extreme">Экстремальная</option>
+              <option value="sedentary">Минимальная (офис)</option>
+              <option value="light">Лёгкая (1–3 трен./нед)</option>
+              <option value="moderate">Средняя (3–5 трен./нед)</option>
+              <option value="high">Высокая (6–7 трен./нед)</option>
+              <option value="athlete">Атлет (2 раза в день)</option>
             </select></div>
         </div>
-        {err && <div className="auth-error" style={{ marginBottom: 16 }}>⚠ {err}</div>}
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <div className="stat-label">BMR · Миффлин-Сан Жеор</div>
-          <div className="stat-value">{Math.round(bmr)}<span className="stat-unit">ккал/день</span></div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', margin: '14px 0' }}>
+          Расчётный BMR: <b style={{ color: 'var(--text)' }}>{Math.round(bmr)} ккал</b>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {onCancel && <button type="button" className="btn secondary" style={{ flex: 1 }} onClick={onCancel}>Отмена</button>}
-          {!initial && <button type="button" className="btn secondary" style={{ flex: 1 }} disabled={busy}
-            onClick={() => void save(true)}>Демо</button>}
-          <button type="submit" className="btn" style={{ flex: 2 }} disabled={busy}>
-            {initial ? 'Сохранить' : 'Начать'}
-          </button>
-        </div>
+        {err && <div className="auth-error">⚠ {err}</div>}
+        <button type="submit" className="btn" disabled={busy}>Начать</button>
+        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Отмена</button>}
       </form>
     </div>
   );
-}
-
-function defaultForm(): FormState {
-  return {
-    name: '', age: 30, gender: 'male', height: 178, weight: 78,
-    fatPercent: 18, musclePercent: 42, activityLevel: 'moderate',
-  };
 }
