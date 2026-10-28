@@ -76,7 +76,7 @@ export function Home() {
   const toast = useToast();
   const user = useAuthStore(s => s.user);
   const signOut = useAuthStore(s => s.signOut);
-  const { data: profile } = useProfile();
+  const { data: profile, error: profileError } = useProfile();
   const { baseline, isLoading: baselineLoading } = useBaseline();
   const inbodyQ = useInBodyLogs();
   const foodQ = useAllFoodLogs();
@@ -222,6 +222,25 @@ export function Home() {
   const handleLogout = async () => { await signOut(); };
 
   // ---- guard-состояния ----
+  // FIX v2: раньше при ОШИБКЕ любого из запросов (profiles / inbody_logs / food_logs…)
+  // Home зависал навечно в «загрузке» (profile === undefined, isLoading уже false):
+  // ровно то и наблюдалось после входа — экран есть, но на нём ничего и консоль пуста.
+  // Теперь ошибки выводим текстом на экран.
+  const firstError =
+    profileError ?? inbodyQ.error ?? foodQ.error ?? actsQ.error ?? dishesQ.error ?? goalQ.error ?? historyQ.error;
+  if (firstError) {
+    console.warn('[metabo] Home query failed:', firstError.message);
+    return (
+      <div className="app">
+        <div className="header"><div className="logo">Meta<span>bo</span></div></div>
+        <div style={{ maxWidth: 640, margin: '24px auto', padding: '14px 18px', borderRadius: 12, background: 'rgba(229,72,77,.12)', border: '1px solid rgba(229,72,77,.4)', color: '#fda4af', fontSize: 13, lineHeight: 1.5 }}>
+          ⚠ Не удалось загрузить данные: {String(firstError.message)}.
+          Если таблицы ещё не созданы — выполните SQL из supabase/migrations/0002_idempotent_fix.sql
+          в Supabase (SQL Editor), затем обновите страницу.
+        </div>
+      </div>
+    );
+  }
   if (baselineLoading || foodQ.isLoading || profile === undefined) {
     return (
       <div className="app">
