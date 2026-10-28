@@ -1,7 +1,7 @@
 // Onboarding — UI 1:1 с прототипом. Запись: profiles (name/age/gender/height/activity) + первый inbody_logs (§8.1).
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { db } from '@/lib/supabase';
+import { db, supabase } from '@/lib/supabase';
 import { NumberInput } from '@/components/NumberInput';
 import { useToast } from '@/components/ui';
 import { calculateBMR, calcBMI } from '@/math/bmr';
@@ -48,13 +48,18 @@ export function Onboarding({ initial, onCancel }: {
       });
       if (iErr) throw new Error(iErr.message);
 
+      // Отмечаем онбординг пройденным, чтобы / не редиректило обратно сюда
+      try {
+        await supabase.auth.updateUser({ data: { onboarded: true } });
+      } catch { /* не критично */ }
+
       // DECISION (§10): демо-сид — вызов SQL-функции seed_demo_data(uid) из миграции.
       if (asDemo ?? isDemoFlow) {
         const { error: sErr } = await db().rpc('seed_demo_data', { uid: user.id } as never);
         if (sErr) console.warn('seed_demo_data:', sErr.message);
       }
       toast('✓ Данные сохранены');
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (e) {
       setErr(String((e as Error).message || e));
     } finally {

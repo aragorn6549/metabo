@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, getSupabaseUrl, supabase } from '@/lib/supabase';
+import { db, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -17,11 +17,10 @@ export function AuthScreen() {
 
   const doAuth = async () => {
     setError(''); setNotice('');
-    // Защита от «мёртвых кнопок»: если URL не задан — не слать запрос в сеть.
-    // Ключ может быть только в env Vercel (в localStorage его нет) — поэтому проверяем именно URL,
-    // а реальный ответ сервера покажет ошибка ниже.
-    if (!getSupabaseUrl()) {
-      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
+    // Ключ и URL могут быть только в env Vercel (в localStorage их нет) —
+    // проверяем полную конфигурацию, а не отдельно URL.
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Перезагрузите страницу (Ctrl+Shift+R) и введите URL проекта и anon-ключ на экране настройки.');
       return;
     }
     const e = email.trim();
@@ -45,8 +44,8 @@ export function AuthScreen() {
   };
 
   const handleDemo = async () => {
-    if (!getSupabaseUrl()) {
-      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Перезагрузите страницу (Ctrl+Shift+R) и введите URL проекта и anon-ключ на экране настройки.');
       return;
     }
     setBusy(true);
