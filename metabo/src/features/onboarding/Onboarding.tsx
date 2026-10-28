@@ -35,10 +35,13 @@ export function Onboarding({ initial, onCancel }: {
     if (!user) return;
     setErr(''); setBusy(true);
     try {
-      const { error: pErr } = await db().from('profiles').update({
+      // upsert вместо update: строка profiles создаётся триггером только для email-пользователей;
+      // анонимные демо-сессии его не получают — вставка под защитой политики profiles_insert_self.
+      const { error: pErr } = await db().from('profiles').upsert({
+        id: user.id,
         name: form.name || null, age: +form.age, gender: form.gender,
         height_cm: +form.height, activity_level: form.activityLevel,
-      }).eq('id', user.id);
+      });
       if (pErr) throw new Error(pErr.message);
 
       const { error: iErr } = await db().from('inbody_logs').insert({
@@ -54,6 +57,8 @@ export function Onboarding({ initial, onCancel }: {
       } catch { /* не критично */ }
 
       // DECISION (§10): демо-сид — вызов SQL-функции seed_demo_data(uid) из миграции.
+      // Если сид недоступен (например, функция ещё не обновлена в БД) — не блокируем вход:
+      // пользователь уже создал baseline вручную на этом шаге.
       if (asDemo ?? isDemoFlow) {
         const { error: sErr } = await db().rpc('seed_demo_data', { uid: user.id } as never);
         if (sErr) console.warn('seed_demo_data:', sErr.message);
