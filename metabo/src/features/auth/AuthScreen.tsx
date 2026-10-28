@@ -1,7 +1,8 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, getSupabaseUrl, supabase } from '@/lib/supabase';
+import { db, isSupabaseConfigured, supabase } from '@/lib/supabase';
+
 import { useAuthStore } from '@/store/authStore';
 
 export function AuthScreen() {
@@ -16,11 +17,10 @@ export function AuthScreen() {
 
   const doAuth = async () => {
     setError(''); setNotice('');
-    // Защита от «мёртвых кнопок»: если URL не задан — не слать запрос в сеть.
-    // Ключ может быть только в env Vercel (в localStorage его нет) — поэтому проверяем именно URL,
-    // а реальный ответ сервера покажет ошибка ниже.
-    if (!getSupabaseUrl()) {
-      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
+    // Ключ и URL могут быть только в env Vercel (в localStorage их нет) —
+    // проверяем полную конфигурацию, а не отдельно URL.
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Перезагрузите страницу (Ctrl+Shift+R) и введите URL проекта и anon-ключ на экране настройки.');
       return;
     }
     const e = email.trim();
@@ -44,8 +44,8 @@ export function AuthScreen() {
   };
 
   const handleDemo = async () => {
-    if (!getSupabaseUrl()) {
-      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
+    if (!isSupabaseConfigured()) {
+      setError('Supabase не настроен на этом устройстве. Перезагрузите страницу (Ctrl+Shift+R) и введите URL проекта и anon-ключ на экране настройки.');
       return;
     }
     setBusy(true);
@@ -65,10 +65,19 @@ export function AuthScreen() {
   return (
     <div className="auth">
       <div className="auth-card">
-        <div className="auth-logo">🔥</div>
-        <h1>Metabo</h1>
-        <p className="auth-sub">Карта метаболизма</p>
-        <div className="auth-tabs">
+        <div className="auth-logo">Meta<span>bo</span></div>
+        <div className="auth-tag">Метаболизм в реальном времени</div>
+        <button type="button" className="btn goal" onClick={handleDemo} disabled={busy}
+          style={{ padding: '16px', fontSize: 15, marginBottom: 4 }}>
+          ⚡ Попробовать демо-режим
+        </button>
+        <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginBottom: 20 }}>
+          Без регистрации · сразу с примерами данных
+        </div>
+        <div className="auth-divider">
+          <div className="line" /><span className="text">или через аккаунт</span><div className="line" />
+        </div>
+        <div className="auth-switch">
           <button type="button" className={mode === 'login' ? 'active' : ''}
             onClick={() => { setMode('login'); setError(''); setNotice(''); }}>Вход</button>
           <button type="button" className={mode === 'register' ? 'active' : ''}
@@ -76,21 +85,21 @@ export function AuthScreen() {
         </div>
         <form onSubmit={(ev) => { ev.preventDefault(); void doAuth(); }}>
           {error && <div className="auth-error">⚠ {error}</div>}
-          {notice && <div className="auth-notice">{notice}</div>}
-          <label>Email
-            <input type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} placeholder="you@mail.ru" autoComplete="email" />
-          </label>
-          <label>Пароль
-            <input type="password" value={password} onChange={(ev) => setPassword(ev.target.value)} placeholder="минимум 6 символов" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-          </label>
-          <button type="submit" className="btn primary" disabled={busy}>
-            {busy ? 'Подождите…' : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+          {notice && <div className="auth-note" style={{ color: 'var(--muscle-2)' }}>{notice}</div>}
+          <div className="form-grid" style={{ gridTemplateColumns: '1fr', gap: 12 }}>
+            <div className="field"><label>Email</label>
+              <input type="text" inputMode="email" value={email} onChange={ev => setEmail(ev.target.value)}
+                placeholder="you@example.com" autoComplete="email" /></div>
+            <div className="field"><label>Пароль</label>
+              <input type="password" value={password} onChange={ev => setPassword(ev.target.value)}
+                placeholder="Минимум 6 символов"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></div>
+          </div>
+          <button type="submit" className="btn" disabled={busy}>
+            {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>
         </form>
-        <div className="auth-divider"><span>или</span></div>
-        <button type="button" className="btn goal" onClick={handleDemo} disabled={busy}>
-          🎮 Демо-режим (без регистрации)
-        </button>
+        <div className="auth-note">Данные хранятся в Supabase и защищены вашим аккаунтом.</div>
       </div>
     </div>
   );
