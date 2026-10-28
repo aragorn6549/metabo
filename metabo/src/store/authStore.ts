@@ -13,47 +13,60 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  session: null,
-  loading: true,
+export const useAuthStore = create<AuthState>((set, get) => {
+  // Подписка на события авторизации — СРАЗУ, синхронно при создании стора.
+  // Раньше она была внутри async init() и могла не подключиться → «вход выполнен,
+  // но ничего не происходит».
+  try {
+    supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+      set({ session, user: session?.user ?? null, loading: false });
+    });
+  } catch {
+    // Supabase ещё не настроен (нет URL/ключа) — подписки нет, gate покажет форму настройки.
+  }
 
-  init: async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      set({ session: data.session, user: data.session?.user ?? null, loading: false });
-      supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
-        set({ session, user: session?.user ?? null, loading: false });
-      });
-    } catch {
-      // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
-      // дальше просто редирим на /login без сессии.
-      set({ session: null, user: null, loading: false });
-    }
-  },
+  return {
+    user: null,
+    session: null,
+    loading: true,
 
-  signIn: async (email, password) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error: error?.message };
-    } catch (e) {
-      // Сетевая ошибка fetch (недоступен хост, CORS, битый URL) — иначе кнопка «молчит»
-      return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
-    }
-  },
+    init: async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        set({ session: data.session, user: data.session?.user ?? null, loading: false });
+      } catch {
+        set({ loading: false });
+      }
+    },
 
-  signUp: async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) return { error: error.message };
-      // DECISION: если подтверждение email включено, session === null — просим подтвердить.
-      return { needsConfirm: !data.session };
-    } catch (e) {
-      return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
-    }
-  },
+    signIn: async (email, password) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return { error: error.message };
+        // Принудительно ставим сессию в стор — не полагаемся на то, что событие
+        // onAuthStateChange дойдёт первым.
+        if (data.session) set({ session: data.session, user: data.session.user, loading: false });
+        return {};
+      } catch (e) {
+        return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
+      }
+    },
 
-  signOut: async () => {
-    await supabase.auth.signOut();
-  },
-}));
+    signUp: async (email, password) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) return { error: error.message };
+        if (data.session) set({ session: data.session, user: data.session.user, loading: false });
+        // DECISION: если подтверждение email включено, session === null — просим подтвердить.
+        return { needsConfirm: !data.session };
+      } catch (e) {
+        return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
+      }
+    },
+
+    signOut: async () => {
+      await supabase.auth.signOut();
+      set({ session: null, user: null });
+    },
+  };
+});
