@@ -1,12 +1,13 @@
 // Экран первичной настройки + самодиагностика подключения.
 // Если VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY не заданы в env — просим ввести их один раз (localStorage).
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
   getSupabaseAnonKey, getSupabaseUrl, isSupabaseConfigured,
   sb, setSupabaseAnonKey, setSupabaseUrl,
 } from '@/lib/supabase';
 
-export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
+export function SupabaseSetupGate({ children }: { children: ReactNode }) {
   const [url, setUrl] = useState(getSupabaseUrl());
   const [key, setKey] = useState(getSupabaseAnonKey());
   const [err, setErr] = useState('');
@@ -100,7 +101,7 @@ export function SupabaseSetupGate({ children }: { children: React.ReactNode }) {
 }
 
 /** После настройки — быстрая проверка, что ключ валиден; при ошибке показываем понятное сообщение. */
-function ConfiguredGuard({ children }: { children: React.ReactNode }) {
+function ConfiguredGuard({ children }: { children: ReactNode }) {
   const [diag, setDiag] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
