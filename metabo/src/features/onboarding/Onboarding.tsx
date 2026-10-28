@@ -1,12 +1,12 @@
 // Onboarding — UI 1:1 с прототипом. Запись: profiles (name/age/gender/height/activity) + первый inbody_logs (§8.1).
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase, db } from '@/lib/supabase';
+import { db } from '@/lib/supabase';
 import { NumberInput } from '@/components/NumberInput';
 import { useToast } from '@/components/ui';
 import { calculateBMR, calcBMI } from '@/math/bmr';
 import { useAuthStore } from '@/store/authStore';
-import type { ActivityLevel, Gender, InbodyLog, Profile } from '@/types/db';
+import type { ActivityLevel, Gender } from '@/types/db';
 
 interface FormState {
   name: string; age: number | ''; gender: Gender; height: number | '';
