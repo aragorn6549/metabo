@@ -59,3 +59,7 @@ export function App() {
     </SupabaseSetupGate>
   );
 }
+
+const { session, loading, init } = useAuthStore();
+
+useEffect(() => { void init(); }, [init]);
