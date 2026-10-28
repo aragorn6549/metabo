@@ -1,62 +1,74 @@
-// src/App.tsx
-import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { getSupabase, isSupabaseConfigured } from './lib/supabase';
-import SupabaseSetupGate from './features/setup/SupabaseSetupGate';
-import AuthScreen from './features/auth/AuthScreen';
-import Onboarding from './features/onboarding/Onboarding';
-import Home from './pages/Home';
-import { useAuthStore } from './store/authStore';
+// §4.2 маршрутизация: /login, /onboarding, /* (защищённое приложение).
+import { useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
+import { AuthScreen } from '@/features/auth/AuthScreen';
+import { Onboarding } from '@/features/onboarding/Onboarding';
+import { Home } from '@/pages/Home';
+import { ToastProvider } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-export default function App() {
-  const [configured, setConfigured] = useState(isSupabaseConfigured());
-  const session = useAuthStore((s) => s.session);
-  const loading = useAuthStore((s) => s.loading);
-  const profile = useAuthStore((s) => s.profile);
-  const qc = useQueryClient();
+const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-  // Подписываемся на изменения авторизации, когда Supabase настроен
+/** Защита: без сессии → /login (§4.2) */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const session = useAuthStore(s => s.session);
+  const loading = useAuthStore(s => s.loading);
+  const loc = useLocation();
+  if (loading) return <div className="app-loading">Загрузка…</div>;
+  if (!session) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  return <>{children}</>;
+}
+
+/** Если нет ни одного inbody_logs — редирект на онбординг (§9 дефолт-редирект) */
+function ProtectedLayout() {
+  const session = useAuthStore(s => s.session);
+  const navigate = useNavigate();
+
+  // Синхронизируем стор при каждой смене URL (на случай рассинхронизации событий)
   useEffect(() => {
-    if (!configured) return;
-    const sb = getSupabase();
-    if (!sb) return;
-    const { data } = sb.auth.onAuthStateChange((_event, sess) => {
-      useAuthStore.getState().setSession(sess);
-      if (!sess) qc.clear();
+    let alive = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (alive && data.session) useAuthStore.setState({ session: data.session, user: data.session.user, loading: false });
     });
-    void sb.auth.getSession().then(({ data: d }) => {
-      useAuthStore.getState().setSession(d.session);
-    });
-    return () => { data.subscription.unsubscribe(); };
-  }, [configured, qc]);
+    return () => { alive = false; };
+  }, []);
 
-  if (!configured) {
-    return <SupabaseSetupGate onReady={() => setConfigured(true)} />;
-  }
-
-  if (loading) return <div className="screen-loading">Загрузка…</div>;
+  useEffect(() => {
+    if (!session) return;
+    void (async () => {
+      const { count } = await supabase.from('inbody_logs').select('*', { count: 'exact', head: true });
+      if ((count ?? 0) === 0) navigate('/onboarding', { replace: true });
+    })();
+  }, [session, navigate]);
 
   return (
-    <Routes>
-      <Route path="/login" element={session ? <Navigate to="/" replace /> : <AuthScreen />} />
-      <Route
-        path="/onboarding"
-        element={
-          !session ? <Navigate to="/login" replace />
-            : profile?.onboarded ? <Navigate to="/" replace />
-              : <Onboarding />
-        }
-      />
-      <Route
-        path="/"
-        element={
-          !session ? <Navigate to="/login" replace />
-            : !profile?.onboarded ? <Navigate to="/onboarding" replace />
-              : <Home />
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <RequireAuth>
+      <Home />
+    </RequireAuth>
+  );
+}
+
+export default function App() {
+  const init = useAuthStore(s => s.init);
+  useEffect(() => { void init(); }, [init]);
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={qc}>
+        <BrowserRouter>
+          <ToastProvider>
+            <Routes>
+              <Route path="/login" element={<AuthScreen />} />
+              <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+              <Route path="/*" element={<ProtectedLayout />} />
+            </Routes>
+          </ToastProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

@@ -13,10 +13,17 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  session: null,
-  loading: true,
+export const useAuthStore = create<AuthState>((set, get) => {
+  // Подписка на события авторизации — СРАЗУ, синхронно при создании стора.
+  // Раньше она была внутри async init() и могла не подключиться → «вход выполнен,
+  // но ничего не происходит».
+  try {
+    supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+      set({ session, user: session?.user ?? null, loading: false });
+    });
+  } catch {
+    // Supabase ещё не настроен (нет URL/ключа) — подписки нет, gate покажет форму настройки.
+  }
 
   init: async () => {
     try {
