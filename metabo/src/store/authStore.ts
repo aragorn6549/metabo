@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
     } catch {
       // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
-      // дальше просто редерим на /login без сессии.
+      // дальше просто редирект на /login без сессии.
       set({ session: null, user: null, loading: false });
     }
   },
