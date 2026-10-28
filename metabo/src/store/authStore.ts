@@ -24,7 +24,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data } = await supabase.auth.getSession();
       set({ session: data.session, user: data.session?.user ?? null, loading: false });
       supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
-        set({ session, user: session?.user ?? null, loading: false });
+        // DECISION (FIX «вход выполнен → редирект → пустая страница»):
+        // при signIn сработавший на старте onAuthStateChange отдаёт событие INITIAL_SESSION
+        // со СТАРЫМ токеном из sessionStorage. Если записать его в стор, только что
+        // созданная сессия затирается, RequireAuth редиректит обратно на /login и всё
+        // «зацикливается». Поэтому обновляем стор только если новая session !== текущей,
+        // либо это явный выход (SIGNED_OUT).
+        set((state) => {
+          if (session === state.session) return state;
+          if (!session && _event !== 'SIGNED_OUT' && state.session) return state;
+          return { session, user: session?.user ?? null, loading: false };
+        });
       });
     } catch {
       // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;

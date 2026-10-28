@@ -40,6 +40,11 @@ function ProtectedLayout() {
   useEffect(() => {
     if (!session) return;
     void (async () => {
+      // DECISION (FIX): сначала дождаться реальной сессии — иначе head-запрос при RLS
+      // с auth.uid() IS NULL вернёт count=0 даже у пользователя с данными,
+      // и редирект на /onboarding будет «прыгать» при каждом маунте.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
       const { count } = await supabase.from('inbody_logs').select('*', { count: 'exact', head: true });
       if ((count ?? 0) === 0) navigate('/onboarding', { replace: true });
     })();

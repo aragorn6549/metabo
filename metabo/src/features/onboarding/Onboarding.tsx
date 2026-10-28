@@ -125,9 +125,6 @@ export function Onboarding({ initial, onCancel }: {
             {initial ? 'Сохранить' : 'Начать'}
           </button>
         </div>
-        {err && <div className="auth-error">⚠ {err}</div>}
-        <button type="submit" className="btn" disabled={busy}>Начать</button>
-        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Отмена</button>}
       </form>
     </div>
   );
