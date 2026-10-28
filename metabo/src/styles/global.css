@@ -427,3 +427,9 @@
     .process-card-rate .rate-value { font-size: 22px; }
     .dishes-grid { grid-template-columns: 1fr; }
   }
+  /* FIX: классы, которые использовались в разметке, но не были определены —
+     из-за этого «Загрузка…»/заглушки рендерились невидимыми на тёмном фоне
+     («пустая страница» после входа). */
+  .app-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+  .screen.center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px; padding: 20px; color: var(--text); }
