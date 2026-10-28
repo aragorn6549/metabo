@@ -22,20 +22,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { data } = await supabase.auth.getSession();
       set({ session: data.session, user: data.session?.user ?? null, loading: false });
-      supabase.auth.onAuthStateChange((_event, session) => {
-        set({ session, user: session?.user ?? null, loading: false });
-      });
     } catch {
       // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
-      // дальше просто редерим на /login без сессии.
+      // дальше просто редирим на /login без сессии.
       set({ session: null, user: null, loading: false });
     }
   },
 
   signIn: async (email, password) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error: error?.message };
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      // FIX: НЕ полагаемся только на событие onAuthStateChange (в StrictMode подписка
+      // могла теряться). Принудительно синхронизируем стор сразу после успешного входа —
+      // RequireAuth тут же пропускает на /, App рендерит онбординг/Home.
+      if (data.session) {
+        set({ session: data.session, user: data.session.user, loading: false });
+      } else {
+        const { data: g } = await supabase.auth.getSession();
+        if (g.session) set({ session: g.session, user: g.session.user, loading: false });
+      }
+      return {};
     } catch (e) {
       // Сетевая ошибка fetch (недоступен хост, CORS, битый URL) — иначе кнопка «молчит»
       return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
@@ -47,7 +54,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) return { error: error.message };
       // DECISION: если подтверждение email включено, session === null — просим подтвердить.
-      return { needsConfirm: !data.session };
+      if (data.session) {
+        set({ session: data.session, user: data.session.user, loading: false });
+        return {};
+      }
+      return { needsConfirm: true };
     } catch (e) {
       return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
     }
@@ -55,5 +66,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    set({ session: null, user: null });
   },
 }));
