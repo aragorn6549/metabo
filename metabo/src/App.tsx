@@ -1,65 +1,74 @@
-// Роутинг и guard-логика (§4.2, §9 readme1.md):
-// /login — AuthScreen; /onboarding — онбординг; / — Home (требует baseline).
-import { Navigate, Route, Routes } from 'react-router-dom';
-import type { ReactNode } from 'react';
+// §4.2 маршрутизация: /login, /onboarding, /* (защищённое приложение).
+import { useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { useBaseline } from '@/hooks/useInBodyLogs';
 import { AuthScreen } from '@/features/auth/AuthScreen';
 import { Onboarding } from '@/features/onboarding/Onboarding';
 import { Home } from '@/pages/Home';
-import { Skeleton } from '@/components/ui';
-import { SupabaseSetupGate } from '@/features/setup/SupabaseSetupGate';
+import { ToastProvider } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-function FullLoader() {
-  return (
-    <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Skeleton h={40} w={200} /><Skeleton h={200} /><Skeleton h={80} />
-    </div>
-  );
-}
+const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-/** Пустой профиль (age/height = null) ⇒ онбординг не пройден (§9: «нет inbody_logs/profile → /onboarding») */
-function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuthStore();
-  if (loading) return <FullLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+/** Защита: без сессии → /login (§4.2) */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const session = useAuthStore(s => s.session);
+  const loading = useAuthStore(s => s.loading);
+  const loc = useLocation();
+  if (loading) return <div className="app-loading">Загрузка…</div>;
+  if (!session) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   return <>{children}</>;
 }
 
-function ProtectedHome() {
-  const { user } = useAuthStore();
-  const { baseline, isLoading } = useBaseline();
-  const onboarded = !!user?.user_metadata?.onboarded || !!baseline;
-  if (isLoading) return <FullLoader />;
-  if (!onboarded) return <Navigate to="/onboarding" replace />;
-  return <Home />;
-}
+/** Если нет ни одного inbody_logs — редирект на онбординг (§9 дефолт-редирект) */
+function ProtectedLayout() {
+  const session = useAuthStore(s => s.session);
+  const navigate = useNavigate();
 
-function OnboardingRoute() {
-  const { user, loading } = useAuthStore();
-  const { baseline, isLoading } = useBaseline();
-  if (loading || isLoading) return <FullLoader />;
-  if (!user) return <Navigate to="/login" replace />;
-  // если уже онборднут и зашёл вручную — на главную (кроме явного запроса ?edit=1)
-  if ((baseline || user.user_metadata?.onboarded) && new URLSearchParams(window.location.search).get('edit') !== '1') {
-    return <Navigate to="/" replace />;
-  }
-  return <Onboarding />;
-}
+  // Синхронизируем стор при каждой смене URL (на случай рассинхронизации событий)
+  useEffect(() => {
+    let alive = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (alive && data.session) useAuthStore.setState({ session: data.session, user: data.session.user, loading: false });
+    });
+    return () => { alive = false; };
+  }, []);
 
-export function App() {
+  useEffect(() => {
+    if (!session) return;
+    void (async () => {
+      const { count } = await supabase.from('inbody_logs').select('*', { count: 'exact', head: true });
+      if ((count ?? 0) === 0) navigate('/onboarding', { replace: true });
+    })();
+  }, [session, navigate]);
+
   return (
-    <SupabaseSetupGate>
-      <Routes>
-        <Route path="/login" element={<AuthScreen />} />
-        <Route path="/onboarding" element={<OnboardingRoute />} />
-        <Route path="/" element={<RequireAuth><ProtectedHome /></RequireAuth>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </SupabaseSetupGate>
+    <RequireAuth>
+      <Home />
+    </RequireAuth>
   );
 }
 
-const { session, loading, init } = useAuthStore();
+export default function App() {
+  const init = useAuthStore(s => s.init);
+  useEffect(() => { void init(); }, [init]);
 
-useEffect(() => { void init(); }, [init]);
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={qc}>
+        <BrowserRouter>
+          <ToastProvider>
+            <Routes>
+              <Route path="/login" element={<AuthScreen />} />
+              <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+              <Route path="/*" element={<ProtectedLayout />} />
+            </Routes>
+          </ToastProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
