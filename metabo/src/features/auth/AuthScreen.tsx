@@ -1,7 +1,7 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, isSupabaseConfigured } from '@/lib/supabase';
+import { db, getSupabaseUrl, supabase } from '@/lib/supabase';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -17,8 +17,10 @@ export function AuthScreen() {
 
   const doAuth = async () => {
     setError(''); setNotice('');
-    // Защита от «мёртвых кнопок»: если ключи не настроены/устарели — не слать запрос в сеть.
-    if (!isSupabaseConfigured()) {
+    // Защита от «мёртвых кнопок»: если URL не задан — не слать запрос в сеть.
+    // Ключ может быть только в env Vercel (в localStorage его нет) — поэтому проверяем именно URL,
+    // а реальный ответ сервера покажет ошибка ниже.
+    if (!getSupabaseUrl()) {
       setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
       return;
     }
@@ -43,15 +45,15 @@ export function AuthScreen() {
   };
 
   const handleDemo = async () => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase не настроен на этом устройстве. Откройте экран настройки или перезагрузите страницу.');
+    if (!getSupabaseUrl()) {
+      setError('Supabase не настроен на этом устройстве. Откройте экран настройки (кнопка внизу) или перезагрузите страницу.');
       return;
     }
     setBusy(true);
     try {
       // DECISION (§10): демо = анонимный вход + is_demo=true в profiles.
-      const { data, error: err } = await (await import('@/lib/supabase')).supabase.auth.signInAnonymously();
-      if (err) { setError('Демо недоступно: ' + err.message); return; }
+      const { data, error: err } = await supabase.auth.signInAnonymously();
+      if (err) { setError('Демо недоступно: ' + err.message + '. Включите Anonymous sign-ins в Supabase → Authentication → Providers.'); return; }
       if (data.user) {
         await db().from('profiles').update({ is_demo: true } as never).eq('id', data.user.id);
       }
