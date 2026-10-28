@@ -1,3 +1,4 @@
+// src/store/authStore.ts — полный исправленный файл (замените содержимое целиком).
 // §4.2 AuthStore (zustand): сессия Supabase как единственный источник истины.
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
@@ -13,22 +14,18 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => {
-  // Подписка на события авторизации — СРАЗУ, синхронно при создании стора.
-  // Раньше она была внутри async init() и могла не подключиться → «вход выполнен,
-  // но ничего не происходит».
-  try {
-    supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
-      set({ session, user: session?.user ?? null, loading: false });
-    });
-  } catch {
-    // Supabase ещё не настроен (нет URL/ключа) — подписки нет, gate покажет форму настройки.
-  }
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  session: null,
+  loading: true,
 
   init: async () => {
     try {
       const { data } = await supabase.auth.getSession();
       set({ session: data.session, user: data.session?.user ?? null, loading: false });
+      supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+        set({ session, user: session?.user ?? null, loading: false });
+      });
     } catch {
       // Supabase ещё не настроен (нет URL) — gate-экран настройки покажет форму;
       // дальше просто редирим на /login без сессии.
@@ -39,17 +36,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
   signIn: async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: error.message };
-      // FIX: НЕ полагаемся только на событие onAuthStateChange (в StrictMode подписка
-      // могла теряться). Принудительно синхронизируем стор сразу после успешного входа —
-      // RequireAuth тут же пропускает на /, App рендерит онбординг/Home.
-      if (data.session) {
+      if (!error && data.session) {
+        // Принудительно обновляем стор сразу после успешного входа,
+        // чтобы не зависеть от задержки onAuthStateChange (гонка промисов).
         set({ session: data.session, user: data.session.user, loading: false });
-      } else {
-        const { data: g } = await supabase.auth.getSession();
-        if (g.session) set({ session: g.session, user: g.session.user, loading: false });
       }
-      return {};
+      return { error: error?.message };
     } catch (e) {
       // Сетевая ошибка fetch (недоступен хост, CORS, битый URL) — иначе кнопка «молчит»
       return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
@@ -60,12 +52,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
     try {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) return { error: error.message };
-      // DECISION: если подтверждение email включено, session === null — просим подтвердить.
       if (data.session) {
+        // Email-подтверждение выключено — сессия есть сразу, обновляем стор немедленно.
         set({ session: data.session, user: data.session.user, loading: false });
-        return {};
       }
-      return { needsConfirm: true };
+      // DECISION: если подтверждение email включено, session === null — просим подтвердить.
+      return { needsConfirm: !data.session };
     } catch (e) {
       return { error: 'Сбой соединения с сервером: ' + String((e as Error)?.message ?? e) };
     }
@@ -73,6 +65,5 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ session: null, user: null });
   },
 }));
