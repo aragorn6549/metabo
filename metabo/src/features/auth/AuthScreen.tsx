@@ -1,11 +1,13 @@
 // AuthScreen — UI 1:1 с прототипом; localStorage-авторизация заменена на Supabase Auth (§8.1).
 // Демо-режим (§10) временно отключён: возвращение кнопки запланировано после стабилизации Auth.
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 import { useAuthStore } from '@/store/authStore';
 
 export function AuthScreen() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +34,7 @@ export function AuthScreen() {
         const res = await signUp(e, password);
         if (res.error) setError(res.error);
         else if (res.needsConfirm) setNotice('Проверьте почту для подтверждения аккаунта.');
-        // при отключённом подтверждении email сессия появится через onAuthStateChange → редирект
+        else navigate('/'); // сессия уже в сторе (signUp записал её напрямую)
       } else {
         const res = await signIn(e, password);
         if (res.error) {
@@ -47,7 +49,12 @@ export function AuthScreen() {
           }
           setError(msg);
         } else {
+          // DECISION (FIX «вход выполнен → перенаправляет → и ничего не происходит»):
+          // сами выполняем переход на / после успешного входа, не полагаясь на то,
+          // что RequireAuth «перерисует» этот экран сам (он этого не делает —
+          // компонент /login не следит за session).
           setNotice('✓ Вход выполнен, перенаправляем…');
+          navigate('/', { replace: true });
         }
       }
     } finally {
