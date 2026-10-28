@@ -5,7 +5,6 @@ import { db, supabase } from '@/lib/supabase';
 import { NumberInput } from '@/components/NumberInput';
 import { useToast } from '@/components/ui';
 import { calculateBMR, calcBMI } from '@/math/bmr';
-import { useAuthStore } from '@/store/authStore';
 import type { ActivityLevel, Gender } from '@/types/db';
 
 interface FormState {
@@ -30,26 +29,32 @@ export function Onboarding({ initial, onCancel }: {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const isDemoFlow = params.get('demo') === '1';
-  const user = useAuthStore(s => s.user);
 
   const bmr = useMemo(() => calculateBMR(+form.weight, +form.height, +form.age, form.gender), [form]);
   const set = (k: keyof FormState, v: number | '' | string) => setForm(f => ({ ...f, [k]: v as never }));
 
   const save = async (asDemo?: boolean) => {
     if (!form.age || !form.height || !form.weight) { setErr('Заполните возраст, рост и вес'); return; }
-    if (!user) return;
-    setErr(''); setBusy(true);
+    setBusy(true);
     try {
+      // FIX: сессию берём напрямую из Supabase, а не из zustand-стора:
+      // если событие onAuthStateChange не дошло до стора, user === null молча
+      // прерывал сохранение («ничего не происходит» после «Начать»).
+      const { data: sessData } = await supabase.auth.getSession();
+      const uid = sessData.session?.user.id;
+      if (!uid) throw new Error('Сессия не найдена — войдите заново');
+
       // upsert вместо update: строка profiles создаётся триггером только для email-пользователей;
       // анонимные демо-сессии его не получают — вставка под защитой политики profiles_insert_self.
       const { error: pErr } = await db().from('profiles').upsert({
-        id: user.id,
+        id: uid,
         name: form.name || null, age: +form.age, gender: form.gender,
         height_cm: +form.height, activity_level: form.activityLevel,
       });
       if (pErr) throw new Error(pErr.message);
 
       const { error: iErr } = await db().from('inbody_logs').insert({
+        user_id: uid,
         measured_at: new Date().toISOString(),
         weight_kg: +form.weight, fat_percent: +form.fatPercent, muscle_percent: +form.musclePercent,
         bmr: Math.round(bmr), bmi: calcBMI(+form.weight, +form.height),
@@ -62,8 +67,10 @@ export function Onboarding({ initial, onCancel }: {
       } catch { /* не критично */ }
 
       // DECISION (§10): демо-сид — вызов SQL-функции seed_demo_data(uid) из миграции.
+      // Если сид недоступен (например, функция ещё не обновлена в БД) — не блокируем вход:
+      // пользователь уже создал baseline вручную на этом шаге.
       if (asDemo ?? isDemoFlow) {
-        const { error: sErr } = await db().rpc('seed_demo_data', { uid: user.id } as never);
+        const { error: sErr } = await db().rpc('seed_demo_data', { uid } as never);
         if (sErr) console.warn('seed_demo_data:', sErr.message);
       }
       toast('✓ Данные сохранены');
@@ -107,8 +114,16 @@ export function Onboarding({ initial, onCancel }: {
               <option value="athlete">Атлет (2 раза в день)</option>
             </select></div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', margin: '14px 0' }}>
-          Расчётный BMR: <b style={{ color: 'var(--text)' }}>{Math.round(bmr)} ккал</b>
+        {err && <div className="auth-error" style={{ marginBottom: 16 }}>⚠ {err}</div>}
+        <div className="stat-card" style={{ marginBottom: 20 }}>
+          <div className="stat-label">BMR · Миффлин-Сан Жеор</div>
+          <div className="stat-value">{Math.round(bmr)}<span className="stat-unit">ккал/день</span></div>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {onCancel && <button type="button" className="btn secondary" style={{ flex: 1 }} onClick={onCancel}>Отмена</button>}
+          <button type="submit" className="btn" style={{ flex: 2 }} disabled={busy}>
+            {initial ? 'Сохранить' : 'Начать'}
+          </button>
         </div>
         {err && <div className="auth-error">⚠ {err}</div>}
         <button type="submit" className="btn" disabled={busy}>Начать</button>

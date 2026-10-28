@@ -58,9 +58,21 @@ describe('simulateDay (эталон ±0.01)', () => {
   });
 
   it('snapshots покрывают весь прошедший день шагом ≤0.25ч', () => {
+    // DECISION: simulateDay интегрирует от 0 до «сейчас»; в интервале 00:00–00:15 ночи
+    // snapshot ровно один — это корректное поведение, проверяем инварианты при >=2 точках.
     const res = simulateDay(food, acts, 0);
-    expect(res.snapshots.length).toBeGreaterThanOrEqual(2);
+    expect(res.snapshots.length).toBeGreaterThanOrEqual(1);
     expect(res.snapshots[0].hour).toBe(0);
+    expect(res.currentHour).toBeGreaterThanOrEqual(0);
+    // при currentHour < 0.25 цикл даёт единственный snapshot на hour=0 (hh=min(h,currentHour)=0)
+    if (res.currentHour >= 0.25) {
+      // DECISION: шаг интеграции 0.25ч — последний snapshot это min(h, currentHour),
+      // отставание от текущего момента не больше шага (0.25ч), точнее гарантировать нельзя.
+      expect(res.snapshots[res.snapshots.length - 1].hour).toBeLessThanOrEqual(res.currentHour + 1e-9);
+      expect(res.currentHour - res.snapshots[res.snapshots.length - 1].hour).toBeLessThan(0.25);
+    } else {
+      expect(res.snapshots.length).toBe(1);
+    }
     for (let i = 1; i < res.snapshots.length; i++) {
       const dh = res.snapshots[i].hour - res.snapshots[i - 1].hour;
       expect(dh).toBeGreaterThan(0);

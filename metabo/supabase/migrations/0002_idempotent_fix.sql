@@ -119,6 +119,17 @@ alter table public.dishes        enable row level security;
 alter table public.goals         enable row level security;
 alter table public.daily_history enable row level security;
 
+-- profiles: чтение владельца, вставка триггером (security definer) и обновление профиля
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own" on public.profiles
+  for select using (auth.uid() = id);
+drop policy if exists "profiles_insert_self" on public.profiles;
+create policy "profiles_insert_self" on public.profiles
+  for insert with check (auth.uid() = id);
+drop policy if exists "own_rows" on public.profiles;
+create policy "own_rows" on public.profiles
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
 drop policy if exists "own_rows" on public.inbody_logs;
 create policy "own_rows" on public.inbody_logs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -144,7 +155,7 @@ create policy "own_profile" on public.profiles
 
 -- ── seed демо-данных (§10) ──
 create or replace function public.seed_demo_data(uid uuid)
-returns void language plpgsql security definer as $$
+returns void language plpgsql security invoker as $$
 declare
   base_w numeric := 78.0;
   i int;
