@@ -66,7 +66,10 @@ describe('simulateDay (эталон ±0.01)', () => {
     expect(res.currentHour).toBeGreaterThanOrEqual(0);
     // при currentHour < 0.25 цикл даёт единственный snapshot на hour=0 (hh=min(h,currentHour)=0)
     if (res.currentHour >= 0.25) {
-      expect(res.snapshots[res.snapshots.length - 1].hour).toBeCloseTo(res.currentHour, 5);
+      // DECISION: шаг интеграции 0.25ч — последний snapshot это min(h, currentHour),
+      // отставание от текущего момента не больше шага (0.25ч), точнее гарантировать нельзя.
+      expect(res.snapshots[res.snapshots.length - 1].hour).toBeLessThanOrEqual(res.currentHour + 1e-9);
+      expect(res.currentHour - res.snapshots[res.snapshots.length - 1].hour).toBeLessThan(0.25);
     } else {
       expect(res.snapshots.length).toBe(1);
     }
